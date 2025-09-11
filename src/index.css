@@ -1,0 +1,35 @@
+/* === Global reset & frame background ===================================== */
+:root {
+  --frame-bg: #6464A0; /* 外层蓝色背景 */
+}
+
+/* 让应用充满窗口，并把全局背景改为蓝色框架色 */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  background: var(--frame-bg);
+}
+
+/* 基本排版：去掉 Vite 模板的居中卡片布局 */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;        /* 防止横向溢出造成右侧白边 */
+}
+
+/* 链接样式（可选） */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 可选：按钮等重置，按需要保留/删除 */
+button {
+  font-family: inherit;
+}
+
+/* 不再使用暗黑/亮色自动切换，避免全局背景被覆盖
+   如需主题切换，交给 MUI Theme 处理 */
