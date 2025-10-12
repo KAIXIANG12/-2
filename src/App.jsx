@@ -48,7 +48,7 @@ function BrandBar(){
         <>
             <AppBar position="fixed" elevation={0} sx={{ bgcolor:'#6F79A8' }}>
                 <Toolbar sx={{ minHeight: 64, px: 2 }}>
-                    {/* 左侧 Logo */}
+                    {/* LEFT Logo */}
                     <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: .3 }}>
                         <Box component="span" sx={{ color:'#fff' }}>Strategic</Box>
                         <Box component="span" sx={{ ml: .5, px: .5, borderRadius: .5, bgcolor:'#D95359', color:'#fff', fontWeight: 900 }}>ALLY</Box>

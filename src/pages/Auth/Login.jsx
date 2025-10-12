@@ -4,29 +4,64 @@ import {
     Box,
     Paper,
     Typography,
-    TextField,
     Button,
     Divider,
     Stack,
-    Link
+    Link,
+    TextField,
+    IconButton,
+    InputAdornment,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
+import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
+import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { useForm } from "react-hook-form";
 
 export default function Login() {
-    const [email, setEmail] = React.useState("");
-    const [loading, setLoading] = React.useState(false);
+    const [loadingSSO, setLoadingSSO] = React.useState(false);
+    const [loadingGoogle, setLoadingGoogle] = React.useState(false);
+    const [showPwd, setShowPwd] = React.useState(false);
 
-    const handleEmailSubmit = async (e) => {
-        e.preventDefault();
-        if (!email) return;
-        setLoading(true);
-        // TODO: 调用你们后端/第三方鉴权（如 Supabase/Auth0/Firebase）
-        // await auth.signInWithOtp({ email })
-        setTimeout(() => setLoading(false), 800); // demo
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+    } = useForm({
+        mode: "onBlur",
+        reValidateMode: "onChange",
+        defaultValues: { email: "", password: "" },
+    });
+
+    // Email + Password 登录（前端示例）
+    const onEmailPasswordLogin = async (values) => {
+        await new Promise((r) => setTimeout(r, 900)); // demo
+        alert(`Email/Password login (demo): ${values.email}`);
     };
 
+    // 企业 SSO（OIDC / SAML）
+    const handleSSO = async () => {
+        try {
+            setLoadingSSO(true);
+            // window.location.href = `/auth/sso/redirect`; // 接后端时替换
+            await new Promise((r) => setTimeout(r, 900)); // demo
+            alert("Redirecting to your organization's SSO provider…");
+        } finally {
+            setLoadingSSO(false);
+        }
+    };
+
+    // Google SSO
     const handleGoogle = async () => {
-        // TODO: 调用 Google OAuth 流程
+        try {
+            setLoadingGoogle(true);
+            // window.location.href = `/auth/google`; // 接后端时替换
+            await new Promise((r) => setTimeout(r, 900)); // demo
+            alert("Redirecting to Google SSO…");
+        } finally {
+            setLoadingGoogle(false);
+        }
     };
 
     return (
@@ -57,7 +92,7 @@ export default function Login() {
                             fontSize: 44,
                             fontWeight: 800,
                             letterSpacing: 1,
-                            color: "#9b8bb5", // 淡紫
+                            color: "#9b8bb5",
                             userSelect: "none",
                         }}
                     >
@@ -69,7 +104,7 @@ export default function Login() {
                                 px: 1,
                                 py: "2px",
                                 borderRadius: "6px",
-                                bgcolor: "#8B0036", // 酒红
+                                bgcolor: "#8B0036",
                                 color: "#fff",
                                 fontWeight: 900,
                             }}
@@ -82,36 +117,97 @@ export default function Login() {
                 {/* 标题 & 副标题 */}
                 <Box sx={{ textAlign: "center", mb: 2 }}>
                     <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                        Create an account
+                        Sign in to your account
                     </Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                        Enter your email to sign up for this app
+                        Sign in with email & password or continue with SSO.
                     </Typography>
                 </Box>
 
-                {/* Email 表单 */}
-                <Box component="form" onSubmit={handleEmailSubmit} noValidate>
+                {/* --- 区块 1：Email + Password（置顶） --- */}
+                <Box
+                    component="form"
+                    onSubmit={handleSubmit(onEmailPasswordLogin)}
+                    noValidate
+                    sx={{ mt: 0.5 }}
+                >
                     <TextField
                         fullWidth
                         type="email"
                         placeholder="email@domain.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
                         inputProps={{ "aria-label": "email" }}
+                        {...register("email", {
+                            required: "Email is required",
+                            pattern: {
+                                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                message: "Enter a valid email",
+                            },
+                        })}
+                        error={Boolean(errors.email)}
+                        helperText={errors.email?.message}
                         sx={{
                             mb: 1.5,
-                            "& .MuiOutlinedInput-root": {
-                                borderRadius: 1.5,
-                            },
+                            "& .MuiOutlinedInput-root": { borderRadius: 1.5 },
                         }}
                     />
+
+                    <TextField
+                        fullWidth
+                        type={showPwd ? "text" : "password"}
+                        placeholder="Password"
+                        autoComplete="current-password"
+                        inputProps={{ "aria-label": "password" }}
+                        {...register("password", {
+                            required: "Password is required",
+                            minLength: { value: 6, message: "At least 6 characters" },
+                        })}
+                        error={Boolean(errors.password)}
+                        helperText={errors.password?.message}
+                        sx={{
+                            mb: 1.5,
+                            "& .MuiOutlinedInput-root": { borderRadius: 1.5 },
+                        }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="toggle password visibility"
+                                        onClick={() => setShowPwd((v) => !v)}
+                                        edge="end"
+                                    >
+                                        {showPwd ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{ mb: 1.25 }}
+                    >
+                        <span />
+                        <Link
+                            underline="hover"
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                alert("Forgot password (demo)");
+                            }}
+                            sx={{ fontSize: 13 }}
+                        >
+                            Forgot password?
+                        </Link>
+                    </Stack>
 
                     <Button
                         fullWidth
                         type="submit"
                         variant="contained"
-                        disabled={!email || loading}
+                        disabled={isSubmitting || loadingSSO || loadingGoogle}
                         sx={{
                             textTransform: "none",
                             py: 1.25,
@@ -120,17 +216,12 @@ export default function Login() {
                             "&:hover": { bgcolor: "#111" },
                         }}
                     >
-                        {loading ? "Sending..." : "Sign up with email"}
+                        {isSubmitting ? "Signing in…" : "Sign in with email"}
                     </Button>
                 </Box>
 
-                {/* 分隔线 */}
-                <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={2}
-                    sx={{ my: 2.5 }}
-                >
+                {/* --- 分割线：下方为 SSO 选项 --- */}
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ my: 2.5 }}>
                     <Divider sx={{ flex: 1 }} />
                     <Typography variant="body2" sx={{ color: "text.secondary" }}>
                         or continue with
@@ -138,23 +229,48 @@ export default function Login() {
                     <Divider sx={{ flex: 1 }} />
                 </Stack>
 
-                {/* Google 按钮 */}
-                <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={handleGoogle}
-                    startIcon={<GoogleIcon />}
-                    sx={{
-                        textTransform: "none",
-                        py: 1.1,
-                        borderRadius: 1.5,
-                        borderColor: "#e0e0e0",
-                        bgcolor: "#fff",
-                        "&:hover": { borderColor: "#cfcfcf", bgcolor: "#fff" },
-                    }}
-                >
-                    Google
-                </Button>
+                {/* --- 区块 2：SSO / Google --- */}
+                <Stack spacing={1.25}>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleSSO}
+                        disabled={loadingSSO || loadingGoogle}
+                        startIcon={
+                            <Box sx={{ display: "flex", alignItems: "center" }}>
+                                <BusinessRoundedIcon sx={{ mr: 0.25 }} />
+                                <LockOpenRoundedIcon fontSize="small" />
+                            </Box>
+                        }
+                        sx={{
+                            textTransform: "none",
+                            py: 1.25,
+                            borderRadius: 1.5,
+                            bgcolor: "#000",
+                            "&:hover": { bgcolor: "#111" },
+                        }}
+                    >
+                        {loadingSSO ? "Connecting to SSO…" : "Continue with SSO"}
+                    </Button>
+
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={handleGoogle}
+                        disabled={loadingSSO || loadingGoogle}
+                        startIcon={<GoogleIcon />}
+                        sx={{
+                            textTransform: "none",
+                            py: 1.1,
+                            borderRadius: 1.5,
+                            borderColor: "#e0e0e0",
+                            bgcolor: "#fff",
+                            "&:hover": { borderColor: "#cfcfcf", bgcolor: "#fff" },
+                        }}
+                    >
+                        {loadingGoogle ? "Connecting…" : "Continue with Google"}
+                    </Button>
+                </Stack>
 
                 {/* Terms & Privacy */}
                 <Typography

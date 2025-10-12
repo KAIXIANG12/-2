@@ -1,11 +1,12 @@
 import * as React from "react";
 import {
     Box, Paper, Typography, Stack, Link,
-    FormControl, InputLabel, Select, MenuItem, OutlinedInput, Chip, Grid, TextField
+    FormControl, InputLabel, Select, MenuItem, OutlinedInput, Chip, TextField,
+    ToggleButton, ToggleButtonGroup
 } from "@mui/material";
 import {
     ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
-    LineChart, Line
+    LineChart, Line, ComposedChart, ReferenceArea
 } from "recharts";
 
 /* ---------------- Demo 数据 ---------------- */
@@ -73,12 +74,17 @@ const DATA = {
     }
 };
 
+/** 基础指标清单（可扩展） */
 const METRIC_LIST = ["Sales Revenue","COGS","SG&A","R&D","EBIT","Net Income","EPS","Gross Income","EBITDA"];
+/** 下拉选项：基础指标 + 两个模式项 */
+const DROPDOWN_OPTIONS = [...METRIC_LIST, "Margins", "Growth Rates"];
+/** 哪些指标可以计算 Margin（分母均为 Sales Revenue） */
 const MARGINABLE = new Set(["Gross Income","EBIT","Pretax Income","Net Income","EBITDA"]);
+
 const COLORS = ["#d43d51","#7A64D8","#2FA7D9","#5DBB63","#E0A100","#7A7A8C","#B35C9D"];
 const YEAR_COLORS = ["#6F7FB8","#8898CF","#A3B0DE","#C1C9EB","#DEE2F6"];
 
-/* ---------------- 数据构造 ---------------- */
+/* ---------------- 工具函数 ---------------- */
 function buildSeries(data, metric, companies){
     const years = data.years;
     const m = data.series?.[metric] || {};
@@ -120,23 +126,91 @@ function buildMarginSeries(data, metric, companies){
         return row;
     });
 }
+function buildIndustryAvgByYear(data, metric){
+    const years = data.years;
+    const m = data.series?.[metric] || {};
+    return years.map(y=>{
+        let sum=0, cnt=0;
+        (data.companies||[]).forEach(c=>{
+            const v = m?.[c]?.[String(y)];
+            if (typeof v === "number") { sum += v; cnt += 1; }
+        });
+        return { year: y, avg: cnt ? sum / cnt : 0 };
+    });
+}
+function computeQuartiles(data, metric){
+    const m = data.series?.[metric] || {};
+    const vals = [];
+    (data.companies||[]).forEach(c=>{
+        (data.years||[]).forEach(y=>{
+            const v = m?.[c]?.[String(y)];
+            if (typeof v === "number") vals.push(v);
+        });
+    });
+    if (!vals.length) return { q1: 0, q3: 0 };
+    vals.sort((a,b)=>a-b);
+    const q = (p) => {
+        const idx = (vals.length - 1) * p;
+        const lo = Math.floor(idx), hi = Math.ceil(idx);
+        if (lo === hi) return vals[lo];
+        return vals[lo] * (hi - idx) + vals[hi] * (idx - lo);
+    };
+    return { q1: q(0.25), q3: q(0.75) };
+}
+function parseCSV(text){
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if (!lines.length) throw new Error("CSV 内容为空");
+    const header = lines[0].split(",").map(s=>s.trim().toLowerCase());
+    const mi = header.indexOf("metric");
+    const ci = header.indexOf("company");
+    const yi = header.indexOf("year");
+    const vi = header.indexOf("value");
+    if (mi<0 || ci<0 || yi<0 || vi<0) throw new Error("CSV 需要列：metric,company,year,value");
+
+    const out = { companies: new Set(), years: new Set(), metrics: new Set(), series: {} };
+    for (let i=1;i<lines.length;i++){
+        const arr = lines[i].split(",").map(s=>s.trim());
+        if (arr.length < 4) continue;
+        const metric = arr[mi];
+        const company = arr[ci];
+        const year = arr[yi];
+        const value = Number(arr[vi]);
+        if (!metric || !company || !year || !isFinite(value)) continue;
+
+        out.metrics.add(metric);
+        out.companies.add(company);
+        out.years.add(Number(year));
+        out.series[metric] = out.series[metric] || {};
+        out.series[metric][company] = out.series[metric][company] || {};
+        out.series[metric][company][String(year)] = value;
+    }
+    const normalized = {
+        companies: Array.from(out.companies),
+        years: Array.from(out.years).sort((a,b)=>a-b),
+        metrics: Array.from(out.metrics),
+        series: out.series
+    };
+    return normalized;
+}
 
 /* ---------------- 图卡外壳 ---------------- */
 function ChartPanel({ title, children }) {
     return (
         <Paper
             variant="outlined"
-            sx={{
-                width: "100%",
-                display: "block",
-                borderRadius: 2,
-                overflow: "hidden"
-            }}
+            sx={{ width: "100%", display: "block", borderRadius: 2, overflow: "hidden" }}
         >
             <Box sx={{ px: 1.5, py: 0.75, bgcolor:'#6F79A8', color:'#fff', fontWeight:700, fontSize:14 }}>
                 {title}
             </Box>
-            <Box sx={{ p: 1.5, width:"100%" }}>
+            <Box
+                sx={{
+                    p: 1.5,
+                    width: "100%",
+                    minWidth: 0,
+                    "& .recharts-responsive-container": { width: "100% !important" }
+                }}
+            >
                 {children}
             </Box>
         </Paper>
@@ -145,38 +219,110 @@ function ChartPanel({ title, children }) {
 
 /* ---------------- 页面 ---------------- */
 export default function FinancialComparativeAnalysis(){
-    const [raw] = React.useState(DATA);
-    const [metric, setMetric] = React.useState("EBIT");
+    const [raw, setRaw] = React.useState(DATA);
+    const [metricSel, setMetricSel] = React.useState("Sales Revenue"); // 默认主指标
     const [companies, setCompanies] = React.useState(DATA.companies.slice(0,5)); // ≤7
+    const [chartType, setChartType] = React.useState("bar"); // bar | line
+
+    const fileInputRef = React.useRef(null);
+
+    const isModeMargins = metricSel === "Margins";
+    const isModeGrowth  = metricSel === "Growth Rates";
+
+    const baseForTop   = isModeMargins ? "Gross Income" : (isModeGrowth ? "Sales Revenue" : metricSel);
+    const growthMetric = isModeGrowth ? "Sales Revenue" : metricSel;
+    const marginMetric = isModeMargins ? "Gross Income" : metricSel;
 
     const allowedMetrics = raw.metrics?.length ? METRIC_LIST.filter(m=> raw.metrics.includes(m)) : METRIC_LIST;
+    const dropdownOptions = [...allowedMetrics, "Margins", "Growth Rates"];
 
-    const byYear     = React.useMemo(()=> buildSeries(raw, metric, companies), [raw, metric, companies]);
-    const byCompany  = React.useMemo(()=> buildByCompany(raw, metric, companies), [raw, metric, companies]);
-    const growth     = React.useMemo(()=> buildGrowthSeries(raw, metric, companies), [raw, metric, companies]);
-    const margin     = React.useMemo(()=> MARGINABLE.has(metric) ? buildMarginSeries(raw, metric, companies) : null, [raw, metric, companies]);
+    const byYear     = React.useMemo(()=> buildSeries(raw, baseForTop, companies), [raw, baseForTop, companies]);
+    const byCompany  = React.useMemo(()=> buildByCompany(raw, baseForTop, companies), [raw, baseForTop, companies]);
+    const growth     = React.useMemo(()=> buildGrowthSeries(raw, growthMetric, companies), [raw, growthMetric, companies]);
+    const margin     = React.useMemo(()=> {
+        if (isModeMargins) return buildMarginSeries(raw, marginMetric, companies);
+        return MARGINABLE.has(marginMetric) ? buildMarginSeries(raw, marginMetric, companies) : null;
+    }, [raw, isModeMargins, marginMetric, companies]);
+
+    const showMargin = !!margin;
+    const chartKey = `${metricSel}|${companies.join(",")}|${chartType}`;
+
+    const industryAvgByYear = React.useMemo(()=> buildIndustryAvgByYear(raw, baseForTop), [raw, baseForTop]);
+    const quartilesTop = React.useMemo(()=> computeQuartiles(raw, baseForTop), [raw, baseForTop]);
+
+    const handleImportClick = () => fileInputRef.current?.click();
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            let next;
+            if (file.name.toLowerCase().endsWith(".json")) {
+                next = JSON.parse(text);
+            } else if (file.name.toLowerCase().endsWith(".csv")) {
+                next = parseCSV(text);
+            } else {
+                alert("仅支持 .json 或 .csv");
+                e.target.value = "";
+                return;
+            }
+            if (!next || !next.series || !next.years || !next.companies) throw new Error("数据结构不完整");
+            setRaw(next);
+            setCompanies(next.companies.slice(0,5));
+            alert("数据导入成功");
+        } catch (err) {
+            console.error(err);
+            alert(`导入失败：${err.message || err}`);
+        } finally {
+            e.target.value = "";
+        }
+    };
 
     return (
         <Box sx={{ width:"100%" }}>
             {/* 工具条 */}
             <Paper variant="outlined" sx={{ p:2, width:"100%" }}>
-                {/* ✅ 新增：按钮行在选择框上方 */}
-                <Stack direction="row" spacing={2} sx={{ mb: 1 }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1, flexWrap:'wrap' }}>
                     <Link component="button" underline="hover" onClick={()=>alert('Add competitor')} sx={{ fontWeight:600 }}>
                         Add Competitor
                     </Link>
-                    <Link component="button" underline="hover" onClick={()=>alert('Import')} >
+
+                    <Link component="button" underline="hover" onClick={handleImportClick}>
                         Import
                     </Link>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".json,.csv"
+                        style={{ display:'none' }}
+                        onChange={handleFileChange}
+                    />
+
+                    <Box sx={{ ml: { xs: 0, md: 2 } }}>
+                        <ToggleButtonGroup
+                            size="small"
+                            value={chartType}
+                            exclusive
+                            onChange={(e,val)=>{ if(val) setChartType(val); }}
+                            aria-label="chart type"
+                        >
+                            <ToggleButton value="bar" aria-label="bar">Bar</ToggleButton>
+                            <ToggleButton value="line" aria-label="trend">Trend</ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
                 </Stack>
 
-                {/* 原有选择框行 + Strategic Report */}
                 <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} sx={{ flexWrap:'wrap' }}>
                     <Stack direction="row" spacing={2} alignItems="center" sx={{ flexWrap:'wrap' }}>
                         <FormControl size="small" sx={{ minWidth: 260 }}>
                             <InputLabel id="metric">Select Financial Metric</InputLabel>
-                            <Select labelId="metric" value={metric} label="Select Financial Metric" onChange={e=>setMetric(e.target.value)}>
-                                {allowedMetrics.map(m=><MenuItem key={m} value={m}>{m}</MenuItem>)}
+                            <Select
+                                labelId="metric"
+                                value={metricSel}
+                                label="Select Financial Metric"
+                                onChange={e=>setMetricSel(e.target.value)}
+                            >
+                                {dropdownOptions.map(m=><MenuItem key={m} value={m}>{m}</MenuItem>)}
                             </Select>
                         </FormControl>
 
@@ -202,7 +348,6 @@ export default function FinancialComparativeAnalysis(){
                         </FormControl>
                     </Stack>
 
-                    {/* 右上角 Strategic Report 链接（保持原来的 mr:4） */}
                     <Link
                         href="#"
                         underline="hover"
@@ -214,64 +359,117 @@ export default function FinancialComparativeAnalysis(){
                 </Stack>
             </Paper>
 
-            {/* 顶部两张柱图：左 8 / 右 4 */}
-            <Grid container spacing={2} sx={{ mt: 0, width:"100%" }}>
-                <Grid item xs={12} md={8} sx={{ width:"100%" }}>
-                    <ChartPanel title={`${metric} — by Year`}>
-                        <Box sx={{ width:"100%", minWidth: 720 }}>
+            {/* 第一行：两张图（by Year / by Company） */}
+            <Box sx={{
+                mt: 2, width: "100%",
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                gap: 2
+            }}>
+                {/* 左：by Year */}
+                <Box sx={{ minWidth: 0 }}>
+                    <ChartPanel title={`${baseForTop} — by Year`}>
+                        <Box key={`top-left|${chartKey}`} sx={{ width:'100%', minWidth: 0 }}>
                             <ResponsiveContainer width="100%" height={360}>
-                                <BarChart
-                                    data={byYear}
-                                    barCategoryGap="20%"
-                                    barGap={6}
-                                    margin={{ top: 12, right: 16, left: 8, bottom: 28 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="year" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                                    {companies.map((c,i)=>(
-                                        <Bar key={c} dataKey={c} name={c} fill={COLORS[i%COLORS.length]} />
-                                    ))}
-                                </BarChart>
+                                {chartType === "bar" ? (
+                                    <ComposedChart
+                                        data={byYear.map((row)=>{
+                                            const ia = industryAvgByYear.find(r=>r.year===row.year)?.avg ?? 0;
+                                            return { ...row, "Industry Avg": ia };
+                                        })}
+                                        margin={{ top: 12, right: 28, left: 16, bottom: 50 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="year" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                        {companies.map((c,i)=>(
+                                            <Bar key={c} dataKey={c} name={c} fill={COLORS[i%COLORS.length]} />
+                                        ))}
+                                        <Line type="monotone" dataKey="Industry Avg" stroke="#444" strokeDasharray="5 5" dot={false} />
+                                    </ComposedChart>
+                                ) : (
+                                    <LineChart
+                                        data={byYear.map((row)=>{
+                                            const ia = industryAvgByYear.find(r=>r.year===row.year)?.avg ?? 0;
+                                            return { ...row, "Industry Avg": ia };
+                                        })}
+                                        margin={{ top: 12, right: 28, left: 16, bottom: 50 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="year" />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                        {companies.map((c,i)=>(
+                                            <Line key={c} type="monotone" dataKey={c} stroke={COLORS[i%COLORS.length]} dot={false} strokeWidth={2}/>
+                                        ))}
+                                        <Line type="monotone" dataKey="Industry Avg" stroke="#444" strokeDasharray="5 5" dot={false} />
+                                    </LineChart>
+                                )}
                             </ResponsiveContainer>
                         </Box>
                     </ChartPanel>
-                </Grid>
+                </Box>
 
-                <Grid item xs={12} md={4} sx={{ width:"100%" }}>
-                    <ChartPanel title={`${metric} — by Company`}>
-                        <Box sx={{ width:"100%", minWidth: 480 }}>
+                {/* 右：by Company */}
+                <Box sx={{ minWidth: 0 }}>
+                    <ChartPanel title={`${baseForTop} — by Company`}>
+                        <Box key={`top-right|${chartKey}`} sx={{ width:'100%', minWidth: 0 }}>
                             <ResponsiveContainer width="100%" height={360}>
-                                <BarChart
-                                    data={byCompany}
-                                    barCategoryGap="28%"
-                                    barGap={4}
-                                    margin={{ top: 12, right: 8, left: 0, bottom: 28 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                                    {raw.years.map((y,i)=>(
-                                        <Bar key={y} dataKey={String(y)} name={String(y)} fill={YEAR_COLORS[i%YEAR_COLORS.length]} />
-                                    ))}
-                                </BarChart>
+                                {chartType === "bar" ? (
+                                    <ComposedChart
+                                        data={byCompany}
+                                        margin={{ top: 12, right: 20, left: 16, bottom: 50 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                        {raw.years.map((y,i)=>(
+                                            <Bar key={y} dataKey={String(y)} name={String(y)} fill={YEAR_COLORS[i%YEAR_COLORS.length]} />
+                                        ))}
+                                    </ComposedChart>
+                                ) : (
+                                    <LineChart
+                                        data={byCompany}
+                                        margin={{ top: 12, right: 20, left: 16, bottom: 50 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
+                                        <YAxis />
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                        {raw.years.map((y,i)=>(
+                                            <Line key={y} type="monotone" dataKey={String(y)} name={String(y)} stroke={YEAR_COLORS[i%YEAR_COLORS.length]} dot={false} />
+                                        ))}
+                                    </LineChart>
+                                )}
                             </ResponsiveContainer>
                         </Box>
                     </ChartPanel>
-                </Grid>
-            </Grid>
+                </Box>
+            </Box>
 
-            {/* 下部两张折线：黑底 + 发光 */}
-            <Grid container spacing={2} sx={{ mt: 0, width:"100%" }}>
-                <Grid item xs={12} md={6} sx={{ width:"100%" }}>
-                    <ChartPanel title={`${metric} Growth`}>
-                        <Box sx={{ width:"100%", minWidth: 600, bgcolor:'#111', borderRadius: 1 }}>
+            {/* 第二行：Growth（必有） + Margin（可选） */}
+            <Box sx={{
+                mt: 2, width: "100%",
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: showMargin ? '1fr 1fr' : '1fr' },
+                gap: 2
+            }}>
+                {/* Growth */}
+                <Box sx={{ minWidth: 0 }}>
+                    <ChartPanel title={`${growthMetric} Growth`}>
+                        <Box key={`g|${chartKey}`} sx={{ width:"100%", minWidth: 0, bgcolor:'#111', borderRadius: 1 }}>
                             <ResponsiveContainer width="100%" height={420}>
-                                <LineChart data={growth} margin={{ top: 12, right: 16, left: 8, bottom: 28 }}>
+                                <LineChart data={growth} margin={{ top: 16, right: 28, left: 16, bottom: 50 }}>
                                     <CartesianGrid stroke="#333" strokeDasharray="3 3" />
                                     <XAxis dataKey="year" stroke="#ddd" tick={{ fill:'#ddd' }} />
                                     <YAxis tickFormatter={(v)=>`${Math.round(v)}%`} stroke="#ddd" tick={{ fill:'#ddd' }} />
@@ -280,8 +478,7 @@ export default function FinancialComparativeAnalysis(){
                                         labelStyle={{ color:'#fff' }}
                                         formatter={(v)=> `${Math.round(v*10)/10}%`}
                                     />
-                                    <Legend verticalAlign="bottom" height={24} iconSize={8}
-                                            wrapperStyle={{ fontSize: 12, color:'#fff' }} />
+                                    <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12, color:'#fff' }} />
                                     <defs>
                                         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
                                             <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
@@ -306,14 +503,15 @@ export default function FinancialComparativeAnalysis(){
                             </ResponsiveContainer>
                         </Box>
                     </ChartPanel>
-                </Grid>
+                </Box>
 
-                <Grid item xs={12} md={6} sx={{ width:"100%" }}>
-                    <ChartPanel title={`${metric} Margin`}>
-                        <Box sx={{ width:"100%", minWidth: 600, bgcolor:'#111', borderRadius: 1 }}>
-                            {margin ? (
+                {/* Margin（仅在支持时渲染） */}
+                {showMargin && (
+                    <Box sx={{ minWidth: 0 }}>
+                        <ChartPanel title={`${(isModeMargins ? "Gross Income" : metricSel)} Margin`}>
+                            <Box key={`m|${chartKey}`} sx={{ width:"100%", minWidth: 0, bgcolor:'#111', borderRadius: 1 }}>
                                 <ResponsiveContainer width="100%" height={420}>
-                                    <LineChart data={margin} margin={{ top: 12, right: 16, left: 8, bottom: 28 }}>
+                                    <LineChart data={margin} margin={{ top: 16, right: 28, left: 16, bottom: 50 }}>
                                         <CartesianGrid stroke="#333" strokeDasharray="3 3" />
                                         <XAxis dataKey="year" stroke="#ddd" tick={{ fill:'#ddd' }} />
                                         <YAxis tickFormatter={(v)=>`${Math.round(v)}%`} stroke="#ddd" tick={{ fill:'#ddd' }} />
@@ -322,8 +520,7 @@ export default function FinancialComparativeAnalysis(){
                                             labelStyle={{ color:'#fff' }}
                                             formatter={(v)=> `${Math.round(v*10)/10}%`}
                                         />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8}
-                                                wrapperStyle={{ fontSize: 12, color:'#fff' }} />
+                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12, color:'#fff' }} />
                                         <defs>
                                             <filter id="glow2" x="-50%" y="-50%" width="200%" height="200%">
                                                 <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
@@ -346,17 +543,13 @@ export default function FinancialComparativeAnalysis(){
                                         ))}
                                     </LineChart>
                                 </ResponsiveContainer>
-                            ) : (
-                                <Box p={2} color="#bbb" sx={{ minHeight: 420, display:'flex', alignItems:'center' }}>
-                                    Margin chart applies to: Gross Income, EBIT, Pretax Income, Net Income, EBITDA.
-                                </Box>
-                            )}
-                        </Box>
-                    </ChartPanel>
-                </Grid>
-            </Grid>
+                            </Box>
+                        </ChartPanel>
+                    </Box>
+                )}
+            </Box>
 
-            {/* 文本区块：上下排 */}
+            {/* 文本区块：上下排（保持不变） */}
             <Paper elevation={0} sx={{ mt: 3, p: 2, borderRadius: 2, border: '1px solid #e0e0e0', width:"100%" }}>
                 <Typography sx={{
                     mb: 1, fontWeight: 700, color: "#6464A0",
@@ -383,13 +576,9 @@ export default function FinancialComparativeAnalysis(){
                 }}>
                     Tactical Actions
                 </Typography>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>1. Elevate Product Leadership</Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>AI will synthesize</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
-                    {`Hero Capsules: Launch tightly curated, design-forward collections…
-Brand-Building Collaborations: Introduce designer partnerships and expand private-label to ~40% of mix.
-Quality Upgrade: Enhance specifications and introduce extended warranties to signal confidence.
-Data-Driven Development: Use consumer insights, returns analysis, and search data to shorten design cycles and sharpen relevance.
-Impact: Increases product credibility, enables premium pricing, and builds earned media visibility.`}
+                    {`AI generation`}
                 </Typography>
             </Paper>
         </Box>
