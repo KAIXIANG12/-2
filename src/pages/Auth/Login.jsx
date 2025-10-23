@@ -11,6 +11,7 @@ import {
     TextField,
     IconButton,
     InputAdornment,
+    Alert,
 } from "@mui/material";
 import GoogleIcon from "@mui/icons-material/Google";
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
@@ -18,11 +19,19 @@ import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useForm } from "react-hook-form";
+import { NavLink, useNavigate } from "react-router-dom";
+
+/** 可通过 .env 配置后端地址，默认同域 */
+const API_BASE = import.meta?.env?.VITE_API_BASE || "";
+const LOGIN_URL = `${API_BASE}/api/auth/login`;
 
 export default function Login() {
+    const navigate = useNavigate();
+
     const [loadingSSO, setLoadingSSO] = React.useState(false);
     const [loadingGoogle, setLoadingGoogle] = React.useState(false);
     const [showPwd, setShowPwd] = React.useState(false);
+    const [errorText, setErrorText] = React.useState("");
 
     const {
         register,
@@ -34,30 +43,78 @@ export default function Login() {
         defaultValues: { email: "", password: "" },
     });
 
-    // Email + Password 登录（前端示例）
-    const onEmailPasswordLogin = async (values) => {
-        await new Promise((r) => setTimeout(r, 900)); // demo
-        alert(`Email/Password login (demo): ${values.email}`);
+    /** 保存 token（兼容不同字段命名） */
+    const saveTokens = (payload) => {
+        if (!payload) return;
+        const access =
+            payload.accessToken || payload.token || payload.access_token;
+        const refresh =
+            payload.refreshToken || payload.refresh_token || payload.refresh;
+        if (access) localStorage.setItem("accessToken", access);
+        if (refresh) localStorage.setItem("refreshToken", refresh);
     };
 
-    // 企业 SSO（OIDC / SAML）
+    /** Email + Password 登录（真实调后端） */
+    const onEmailPasswordLogin = async (values) => {
+        setErrorText("");
+        try {
+            const res = await fetch(LOGIN_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: values.email,
+                    password: values.password,
+                }),
+                credentials: "include", // 如果后端设置了 cookie，可留着；否则无影响
+            });
+
+            // 非 2xx 直接抛错
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(txt || `HTTP ${res.status}`);
+            }
+
+            const data = await res.json().catch(() => ({}));
+
+            // 后端返回可能是 {data: {...}} 或直接 {...}
+            const payload = data?.data ?? data;
+
+            // 取出 token 并保存
+            saveTokens(payload);
+
+            // 也尝试把 user 放到本地（如果有）
+            if (payload?.user) {
+                localStorage.setItem("currentUser", JSON.stringify(payload.user));
+            }
+
+            // 登录成功 → 跳转业务首页
+            navigate("/mra/geo", { replace: true });
+        } catch (e) {
+            console.error(e);
+            setErrorText(
+                "Sign-in failed. Please check your email and password and try again."
+            );
+        }
+    };
+
+    /** 企业 SSO（OIDC / SAML）占位 */
     const handleSSO = async () => {
         try {
             setLoadingSSO(true);
-            // window.location.href = `/auth/sso/redirect`; // 接后端时替换
-            await new Promise((r) => setTimeout(r, 900)); // demo
+            // window.location.href = `${API_BASE}/api/auth/sso/redirect`;
+            await new Promise((r) => setTimeout(r, 800));
             alert("Redirecting to your organization's SSO provider…");
         } finally {
             setLoadingSSO(false);
         }
     };
 
-    // Google SSO
+    /** Google SSO 占位 */
     const handleGoogle = async () => {
         try {
             setLoadingGoogle(true);
-            // window.location.href = `/auth/google`; // 接后端时替换
-            await new Promise((r) => setTimeout(r, 900)); // demo
+            // window.location.href = `${API_BASE}/api/auth/google`;
+            await new Promise((r) => setTimeout(r, 800));
             alert("Redirecting to Google SSO…");
         } finally {
             setLoadingGoogle(false);
@@ -122,7 +179,21 @@ export default function Login() {
                     <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
                         Sign in with email & password or continue with SSO.
                     </Typography>
+
+                    {/* 注册入口 */}
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        Don’t have an account?{" "}
+                        <Link component={NavLink} to="/auth/register" underline="hover">
+                            Create one
+                        </Link>
+                    </Typography>
                 </Box>
+
+                {errorText && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        {errorText}
+                    </Alert>
+                )}
 
                 {/* --- 区块 1：Email + Password（置顶） --- */}
                 <Box

@@ -1,3 +1,4 @@
+// src/App.jsx
 import * as React from 'react'
 import { Routes, Route, Navigate, useLocation, NavLink, Outlet } from 'react-router-dom'
 import Container from '@mui/material/Container'
@@ -19,16 +20,17 @@ import Avatar from '@mui/material/Avatar'
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 
-// 登录页
-import Login from "./pages/Auth/Login"
+// Auth pages
+import Login from './pages/Auth/Login'
+import Register from './pages/Auth/Register' // ☆ 新增
 
 // 顶部一级导航
 const TOP = [
-    { key: 'mra', label: 'Market Reach Analysis',   path: '/mra/geo' },
-    { key: 'cp',  label: 'Competitive Positioning', path: '/cp/cvo'  },
-    { key: 'ca',  label: 'Comparative Analysis',    path: '/ca'      },
-    { key: 'fb',  label: 'Financial Benchmarking',  path: '/fb'      },
-    { key: 'ob',  label: 'Operational Benchmarking',path: '/ob'      },
+    { key: 'mra', label: 'Market Reach Analysis', path: '/mra/geo' },
+    { key: 'cp',  label: 'Competitive Positioning', path: '/cp/cvo' },
+    { key: 'ca',  label: 'Comparative Analysis', path: '/ca' },
+    { key: 'fb',  label: 'Financial Benchmarking', path: '/fb' },
+    { key: 'ob',  label: 'Operational Benchmarking', path: '/ob' },
 ]
 
 // Competitive Positioning 左侧菜单
@@ -76,6 +78,8 @@ function BrandBar(){
                         <Button color="inherit" size="small" sx={{ textTransform:'none' }}>Set up</Button>
                         <Button color="inherit" size="small" sx={{ textTransform:'none' }}>Help</Button>
                         <Button component={NavLink} to="/auth/login" color="inherit" size="small" sx={{ textTransform:'none' }}>Login</Button>
+                        {/* ☆ 新增 Register 入口 */}
+                        <Button component={NavLink} to="/auth/register" color="inherit" size="small" sx={{ textTransform:'none' }}>Register</Button>
                         <Avatar sx={{ width: 28, height: 28 }}>F</Avatar>
                     </Stack>
                 </Toolbar>
@@ -184,14 +188,18 @@ export default function App(){
     const location = useLocation()
     const isAuth = location.pathname.startsWith('/auth')
 
+    // 认证分支：只渲染登录/注册等独立页面
     if (isAuth) {
         return (
             <Routes>
                 <Route path="/auth/login" element={<Login />} />
+                <Route path="/auth/register" element={<Register />} /> {/* ☆ 新增注册路由 */}
+                <Route path="*" element={<Navigate to="/auth/login" replace />} />
             </Routes>
         )
     }
 
+    // 业务分支
     return (
         <Frame>
             <Routes>
