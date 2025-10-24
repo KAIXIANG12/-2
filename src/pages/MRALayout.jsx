@@ -1,3 +1,4 @@
+// src/pages/MRALayout.jsx
 import * as React from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
 import {
@@ -7,21 +8,22 @@ import {
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 
-/** 与截图完全一致的菜单映射 **/
+/** 单一来源：/mra 侧边栏菜单（已合并三页为“Geographical Performance Analysis”） */
 const MRA_MAIN = [
-    { key:'select',  label:'Competitor Selection',            path:'/mra/competitor-selection' },
-    { key:'geo',     label:'Geographical Performance',        path:'/mra/geo' },
-    { key:'bench',   label:'Industry Benchmarks',             path:'/mra/benchmarks' },
-    { key:'scale',   label:'Scale-Value Comparison',          path:'/mra/scale-value' },
-    { key:'svg',     label:'Scale-Value-Growth Comparison',   path:'/mra/scale-value-growth' },
-    { key:'reach',   label:'Market Reach Analysis',           path:'/mra/market-reach' },
-    { key:'share',   label:'Market Share by Country',         path:'/mra/share' },
-    { key:'channel', label:'Channel Mix Comparison',          path:'/mra/channel-mix' },
-    { key:'plant',   label:'Production Plant',                path:'/mra/plant' },
-    { key:'via',     label:'Vertical Integration Assessment', path:'/mra/vertical-integration' },
+    { key:'select',  label:'Competitor Selection',               path:'/mra/competitor-selection' },
+    { key:'geo',     label:'Geographical Performance Analysis',  path:'/mra/geo' }, // 合并入口
+    { key:'bench',   label:'Industry Benchmarks',                path:'/mra/benchmarks' },
+    { key:'scale',   label:'Scale-Value Comparison',             path:'/mra/scale-value' },
+    { key:'battle',  label:'Battlefield Positioning',            path:'/mra/battlefield' },
+    { key:'reach',   label:'Market Reach Analysis',              path:'/mra/market-reach' },
+    // 已合并到 geo：以下两项不再出现在侧栏
+    // { key:'share',  label:'Market Share by Country',           path:'/mra/share' },
+    // { key:'plant',  label:'Production Plant',                  path:'/mra/plant' },
+    { key:'channel', label:'Channel Mix Comparison',             path:'/mra/channel-mix' },
+    { key:'via',     label:'Vertical Integration Assessment',    path:'/mra/vertical-integration' },
 ]
 
-// “DATA SOURCE GUIDE” 小节（仍然是站内路由占位，后续可跳外链）
+// “DATA SOURCE GUIDE” 小节
 const MRA_DATASOURCE = [
     { key:'ds-competitor', label:'Competitor Info Data Source', path:'/mra/datasource/competitor-info' },
     { key:'ds-channel',    label:'Channel Mix Data Source',     path:'/mra/datasource/channel-mix' },
@@ -105,7 +107,7 @@ export default function MRALayout() {
                 )}
             </Paper>
 
-            {/* 右侧内容 */}
+            {/* 右侧内容区域 */}
             <Box sx={{ flex:'1 1 auto', minWidth:0, width:'100%' }}>
                 <Outlet />
             </Box>

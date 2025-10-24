@@ -1,3 +1,4 @@
+// src/pages/FinancialComparativeAnalysis.jsx
 import * as React from "react";
 import {
     Box, Paper, Typography, Stack, Link,
@@ -9,11 +10,13 @@ import {
     LineChart, Line, ComposedChart, ReferenceArea
 } from "recharts";
 
-/* ---------------- Demo 数据 ---------------- */
+/* ---------------- Demo 数据（含 Pretax Income；无 R&D） ---------------- */
 const DATA = {
     companies: ["Your Company","Competitor 1","Competitor 2","Competitor 3","Competitor 4","Competitor 5"],
     years: [2020,2021,2022,2023,2024],
-    metrics: ["Sales Revenue","COGS","SG&A","R&D","EBIT","Net Income","EPS","Gross Income","EBITDA"],
+    metrics: [
+        "Sales Revenue","COGS","SG&A","EBIT","Pretax Income","Net Income","EPS","Gross Income","EBITDA"
+    ],
     series: {
         "Sales Revenue": {
             "Your Company": {"2020": 620, "2021": 640, "2022": 480, "2023": 610, "2024": 590},
@@ -39,21 +42,37 @@ const DATA = {
             "Competitor 4": {"2020": 240, "2021": 180, "2022": 180, "2023": 220, "2024": 240},
             "Competitor 5": {"2020": 320, "2021": 320, "2022": 330, "2023": 345, "2024": 350}
         },
+        "SG&A": {
+            "Your Company": {"2020": 140, "2021": 110, "2022": 85, "2023": 95, "2024": 112},
+            "Competitor 1": {"2020": 150, "2021": 150, "2022": 150, "2023": 140, "2024": 120},
+            "Competitor 2": {"2020": 120, "2021": 110, "2022": 105, "2023": 100, "2024": 90},
+            "Competitor 3": {"2020": 120, "2021": 130, "2022": 110, "2023": 120, "2024": 120},
+            "Competitor 4": {"2020": 110, "2021": 100, "2022": 90, "2023": 80, "2024": 78},
+            "Competitor 5": {"2020": 95, "2021": 100, "2022": 110, "2023": 115, "2024": 115}
+        },
         "EBIT": {
-            "Your Company": {"2020": 120, "2021": 110, "2022": 95, "2023": 105, "2024": 98},
+            "Your Company": {"2020": 120, "2021": 110, "2022": 95,  "2023": 105, "2024": 98},
             "Competitor 1": {"2020": 200, "2021": 210, "2022": 230, "2023": 280, "2024": 310},
-            "Competitor 2": {"2020": 90, "2021": 30, "2022": -45, "2023": -20, "2024": 80},
+            "Competitor 2": {"2020": 90,  "2021": 30,  "2022": -45, "2023": -20, "2024": 80},
             "Competitor 3": {"2020": 140, "2021": 130, "2022": 190, "2023": 240, "2024": 260},
-            "Competitor 4": {"2020": 60, "2021": 40, "2022": -20, "2023": 30, "2024": 40},
-            "Competitor 5": {"2020": 80, "2021": 70, "2022": 60, "2023": 65, "2024": 70}
+            "Competitor 4": {"2020": 60,  "2021": 40,  "2022": -20, "2023": 30,  "2024": 40},
+            "Competitor 5": {"2020": 80,  "2021": 70,  "2022": 60,  "2023": 65,  "2024": 70}
+        },
+        "Pretax Income": {
+            "Your Company": {"2020": 110, "2021": 105, "2022": 88,  "2023": 98,  "2024": 92},
+            "Competitor 1": {"2020": 190, "2021": 205, "2022": 225, "2023": 270, "2024": 300},
+            "Competitor 2": {"2020": 85,  "2021": 26,  "2022": -48, "2023": -18, "2024": 75},
+            "Competitor 3": {"2020": 132, "2021": 124, "2022": 182, "2023": 232, "2024": 252},
+            "Competitor 4": {"2020": 55,  "2021": 36,  "2022": -22, "2023": 26,  "2024": 36},
+            "Competitor 5": {"2020": 76,  "2021": 66,  "2022": 56,  "2023": 60,  "2024": 66}
         },
         "Net Income": {
-            "Your Company": {"2020": 80, "2021": 76, "2022": 60, "2023": 68, "2024": 64},
+            "Your Company": {"2020": 80,  "2021": 76,  "2022": 60,  "2023": 68,  "2024": 64},
             "Competitor 1": {"2020": 140, "2021": 150, "2022": 160, "2023": 180, "2024": 200},
-            "Competitor 2": {"2020": 60, "2021": 20, "2022": -50, "2023": -10, "2024": 50},
-            "Competitor 3": {"2020": 85, "2021": 80, "2022": 130, "2023": 160, "2024": 180},
-            "Competitor 4": {"2020": 30, "2021": 22, "2022": -15, "2023": 18, "2024": 24},
-            "Competitor 5": {"2020": 55, "2021": 50, "2022": 45, "2023": 48, "2024": 52}
+            "Competitor 2": {"2020": 60,  "2021": 20,  "2022": -50, "2023": -10, "2024": 50},
+            "Competitor 3": {"2020": 85,  "2021": 80,  "2022": 130, "2023": 160, "2024": 180},
+            "Competitor 4": {"2020": 30,  "2021": 22,  "2022": -15, "2023": 18,  "2024": 24},
+            "Competitor 5": {"2020": 55,  "2021": 50,  "2022": 45,  "2023": 48,  "2024": 52}
         },
         "EPS": {
             "Your Company": {"2020": 2.1, "2021": 2.0, "2022": 1.5, "2023": 1.7, "2024": 1.6},
@@ -66,23 +85,23 @@ const DATA = {
         "EBITDA": {
             "Your Company": {"2020": 160, "2021": 150, "2022": 120, "2023": 140, "2024": 135},
             "Competitor 1": {"2020": 240, "2021": 250, "2022": 260, "2023": 300, "2024": 330},
-            "Competitor 2": {"2020": 120, "2021": 50, "2022": -30, "2023": 5, "2024": 110},
+            "Competitor 2": {"2020": 120, "2021": 50,  "2022": -30, "2023": 5,   "2024": 110},
             "Competitor 3": {"2020": 170, "2021": 160, "2022": 220, "2023": 270, "2024": 290},
-            "Competitor 4": {"2020": 90, "2021": 70, "2022": 10, "2023": 50, "2024": 60},
-            "Competitor 5": {"2020": 110, "2021": 100, "2022": 95, "2023": 100, "2024": 105}
+            "Competitor 4": {"2020": 90,  "2021": 70,  "2022": 10,  "2023": 50,  "2024": 60},
+            "Competitor 5": {"2020": 110, "2021": 100, "2022": 95,  "2023": 100, "2024": 105}
         }
     }
 };
 
-/** 基础指标清单（可扩展） */
-const METRIC_LIST = ["Sales Revenue","COGS","SG&A","R&D","EBIT","Net Income","EPS","Gross Income","EBITDA"];
-/** 下拉选项：基础指标 + 两个模式项 */
-const DROPDOWN_OPTIONS = [...METRIC_LIST, "Margins", "Growth Rates"];
-/** 哪些指标可以计算 Margin（分母均为 Sales Revenue） */
+/** Dropdown：仅蓝色方块里的指标 */
+const METRIC_LIST = [
+    "Sales Revenue","COGS","Gross Income","SG&A","EBIT","Pretax Income","Net Income","EBITDA","EPS"
+];
+/** 哪些指标可计算 Margin（分母为 Sales Revenue） */
 const MARGINABLE = new Set(["Gross Income","EBIT","Pretax Income","Net Income","EBITDA"]);
 
 const COLORS = ["#d43d51","#7A64D8","#2FA7D9","#5DBB63","#E0A100","#7A7A8C","#B35C9D"];
-const YEAR_COLORS = ["#6F7FB8","#8898CF","#A3B0DE","#C1C9EB","#DEE2F6"];
+const YEAR_COLORS = ["#6F79A8","#8898CF","#A3B0DE","#C1C9EB","#DEE2F6"];
 
 /* ---------------- 工具函数 ---------------- */
 function buildSeries(data, metric, companies){
@@ -220,29 +239,26 @@ function ChartPanel({ title, children }) {
 /* ---------------- 页面 ---------------- */
 export default function FinancialComparativeAnalysis(){
     const [raw, setRaw] = React.useState(DATA);
-    const [metricSel, setMetricSel] = React.useState("Sales Revenue"); // 默认主指标
+    const [metricSel, setMetricSel] = React.useState("Sales Revenue");
     const [companies, setCompanies] = React.useState(DATA.companies.slice(0,5)); // ≤7
     const [chartType, setChartType] = React.useState("bar"); // bar | line
 
     const fileInputRef = React.useRef(null);
 
-    const isModeMargins = metricSel === "Margins";
-    const isModeGrowth  = metricSel === "Growth Rates";
-
-    const baseForTop   = isModeMargins ? "Gross Income" : (isModeGrowth ? "Sales Revenue" : metricSel);
-    const growthMetric = isModeGrowth ? "Sales Revenue" : metricSel;
-    const marginMetric = isModeMargins ? "Gross Income" : metricSel;
+    const isModeEPS = metricSel === "EPS"; // EPS 选择时不渲染图表
+    const baseForTop = metricSel;
+    const growthMetric = metricSel;
+    const marginMetric = metricSel;
 
     const allowedMetrics = raw.metrics?.length ? METRIC_LIST.filter(m=> raw.metrics.includes(m)) : METRIC_LIST;
-    const dropdownOptions = [...allowedMetrics, "Margins", "Growth Rates"];
+    const dropdownOptions = [...allowedMetrics]; // ✅ 移除了 “Margins / Growth Rates”
 
     const byYear     = React.useMemo(()=> buildSeries(raw, baseForTop, companies), [raw, baseForTop, companies]);
     const byCompany  = React.useMemo(()=> buildByCompany(raw, baseForTop, companies), [raw, baseForTop, companies]);
     const growth     = React.useMemo(()=> buildGrowthSeries(raw, growthMetric, companies), [raw, growthMetric, companies]);
-    const margin     = React.useMemo(()=> {
-        if (isModeMargins) return buildMarginSeries(raw, marginMetric, companies);
-        return MARGINABLE.has(marginMetric) ? buildMarginSeries(raw, marginMetric, companies) : null;
-    }, [raw, isModeMargins, marginMetric, companies]);
+    const margin     = React.useMemo(()=> (
+        MARGINABLE.has(marginMetric) ? buildMarginSeries(raw, marginMetric, companies) : null
+    ), [raw, marginMetric, companies]);
 
     const showMargin = !!margin;
     const chartKey = `${metricSel}|${companies.join(",")}|${chartType}`;
@@ -359,197 +375,202 @@ export default function FinancialComparativeAnalysis(){
                 </Stack>
             </Paper>
 
-            {/* 第一行：两张图（by Year / by Company） */}
-            <Box sx={{
-                mt: 2, width: "100%",
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                gap: 2
-            }}>
-                {/* 左：by Year */}
-                <Box sx={{ minWidth: 0 }}>
-                    <ChartPanel title={`${baseForTop} — by Year`}>
-                        <Box key={`top-left|${chartKey}`} sx={{ width:'100%', minWidth: 0 }}>
-                            <ResponsiveContainer width="100%" height={360}>
-                                {chartType === "bar" ? (
-                                    <ComposedChart
-                                        data={byYear.map((row)=>{
-                                            const ia = industryAvgByYear.find(r=>r.year===row.year)?.avg ?? 0;
-                                            return { ...row, "Industry Avg": ia };
-                                        })}
-                                        margin={{ top: 12, right: 28, left: 16, bottom: 50 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="year" />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
-                                        {companies.map((c,i)=>(
-                                            <Bar key={c} dataKey={c} name={c} fill={COLORS[i%COLORS.length]} />
-                                        ))}
-                                        <Line type="monotone" dataKey="Industry Avg" stroke="#444" strokeDasharray="5 5" dot={false} />
-                                    </ComposedChart>
-                                ) : (
-                                    <LineChart
-                                        data={byYear.map((row)=>{
-                                            const ia = industryAvgByYear.find(r=>r.year===row.year)?.avg ?? 0;
-                                            return { ...row, "Industry Avg": ia };
-                                        })}
-                                        margin={{ top: 12, right: 28, left: 16, bottom: 50 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="year" />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
-                                        {companies.map((c,i)=>(
-                                            <Line key={c} type="monotone" dataKey={c} stroke={COLORS[i%COLORS.length]} dot={false} strokeWidth={2}/>
-                                        ))}
-                                        <Line type="monotone" dataKey="Industry Avg" stroke="#444" strokeDasharray="5 5" dot={false} />
-                                    </LineChart>
-                                )}
-                            </ResponsiveContainer>
+            {/* EPS 选中时不渲染图表 */}
+            {!isModeEPS && (
+                <>
+                    {/* 第一行：by Year / by Company */}
+                    <Box sx={{
+                        mt: 2, width: "100%",
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                        gap: 2
+                    }}>
+                        {/* 左：by Year */}
+                        <Box sx={{ minWidth: 0 }}>
+                            <ChartPanel title={`${baseForTop} — by Year`}>
+                                <Box key={`top-left|${chartKey}`} sx={{ width:'100%', minWidth: 0 }}>
+                                    <ResponsiveContainer width="100%" height={360}>
+                                        {chartType === "bar" ? (
+                                            <ComposedChart
+                                                data={byYear.map((row)=>{
+                                                    const ia = industryAvgByYear.find(r=>r.year===row.year)?.avg ?? 0;
+                                                    return { ...row, "Industry Avg": ia };
+                                                })}
+                                                margin={{ top: 12, right: 28, left: 16, bottom: 50 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="year" />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                                <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                                {companies.map((c,i)=>(
+                                                    <Bar key={c} dataKey={c} name={c} fill={COLORS[i%COLORS.length]} />
+                                                ))}
+                                                <Line type="monotone" dataKey="Industry Avg" stroke="#444" strokeDasharray="5 5" dot={false} />
+                                            </ComposedChart>
+                                        ) : (
+                                            <LineChart
+                                                data={byYear.map((row)=>{
+                                                    const ia = industryAvgByYear.find(r=>r.year===row.year)?.avg ?? 0;
+                                                    return { ...row, "Industry Avg": ia };
+                                                })}
+                                                margin={{ top: 12, right: 28, left: 16, bottom: 50 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="year" />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                                <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                                {companies.map((c,i)=>(
+                                                    <Line key={c} type="monotone" dataKey={c} stroke={COLORS[i%COLORS.length]} dot={false} strokeWidth={2}/>
+                                                ))}
+                                                <Line type="monotone" dataKey="Industry Avg" stroke="#444" strokeDasharray="5 5" dot={false} />
+                                            </LineChart>
+                                        )}
+                                    </ResponsiveContainer>
+                                </Box>
+                            </ChartPanel>
                         </Box>
-                    </ChartPanel>
-                </Box>
 
-                {/* 右：by Company */}
-                <Box sx={{ minWidth: 0 }}>
-                    <ChartPanel title={`${baseForTop} — by Company`}>
-                        <Box key={`top-right|${chartKey}`} sx={{ width:'100%', minWidth: 0 }}>
-                            <ResponsiveContainer width="100%" height={360}>
-                                {chartType === "bar" ? (
-                                    <ComposedChart
-                                        data={byCompany}
-                                        margin={{ top: 12, right: 20, left: 16, bottom: 50 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
-                                        {raw.years.map((y,i)=>(
-                                            <Bar key={y} dataKey={String(y)} name={String(y)} fill={YEAR_COLORS[i%YEAR_COLORS.length]} />
-                                        ))}
-                                    </ComposedChart>
-                                ) : (
-                                    <LineChart
-                                        data={byCompany}
-                                        margin={{ top: 12, right: 20, left: 16, bottom: 50 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
-                                        <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
-                                        {raw.years.map((y,i)=>(
-                                            <Line key={y} type="monotone" dataKey={String(y)} name={String(y)} stroke={YEAR_COLORS[i%YEAR_COLORS.length]} dot={false} />
-                                        ))}
-                                    </LineChart>
-                                )}
-                            </ResponsiveContainer>
+                        {/* 右：by Company */}
+                        <Box sx={{ minWidth: 0 }}>
+                            <ChartPanel title={`${baseForTop} — by Company`}>
+                                <Box key={`top-right|${chartKey}`} sx={{ width:'100%', minWidth: 0 }}>
+                                    <ResponsiveContainer width="100%" height={360}>
+                                        {chartType === "bar" ? (
+                                            <ComposedChart
+                                                data={byCompany}
+                                                margin={{ top: 12, right: 20, left: 16, bottom: 50 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                                <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                                {raw.years.map((y,i)=>(
+                                                    <Bar key={y} dataKey={String(y)} name={String(y)} fill={YEAR_COLORS[i%YEAR_COLORS.length]} />
+                                                ))}
+                                            </ComposedChart>
+                                        ) : (
+                                            <LineChart
+                                                data={byCompany}
+                                                margin={{ top: 12, right: 20, left: 16, bottom: 50 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="company" interval={0} tick={{ fontSize: 12 }} />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12 }} />
+                                                <ReferenceArea y1={quartilesTop.q1} y2={quartilesTop.q3} strokeOpacity={0} fill="#6F79A8" fillOpacity={0.08} />
+                                                {raw.years.map((y,i)=>(
+                                                    <Line key={y} type="monotone" dataKey={String(y)} name={String(y)} stroke={YEAR_COLORS[i%YEAR_COLORS.length]} dot={false} />
+                                                ))}
+                                            </LineChart>
+                                        )}
+                                    </ResponsiveContainer>
+                                </Box>
+                            </ChartPanel>
                         </Box>
-                    </ChartPanel>
-                </Box>
-            </Box>
-
-            {/* 第二行：Growth（必有） + Margin（可选） */}
-            <Box sx={{
-                mt: 2, width: "100%",
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: showMargin ? '1fr 1fr' : '1fr' },
-                gap: 2
-            }}>
-                {/* Growth */}
-                <Box sx={{ minWidth: 0 }}>
-                    <ChartPanel title={`${growthMetric} Growth`}>
-                        <Box key={`g|${chartKey}`} sx={{ width:"100%", minWidth: 0, bgcolor:'#111', borderRadius: 1 }}>
-                            <ResponsiveContainer width="100%" height={420}>
-                                <LineChart data={growth} margin={{ top: 16, right: 28, left: 16, bottom: 50 }}>
-                                    <CartesianGrid stroke="#333" strokeDasharray="3 3" />
-                                    <XAxis dataKey="year" stroke="#ddd" tick={{ fill:'#ddd' }} />
-                                    <YAxis tickFormatter={(v)=>`${Math.round(v)}%`} stroke="#ddd" tick={{ fill:'#ddd' }} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor:'#1f1f1f', border:'none', color:'#fff' }}
-                                        labelStyle={{ color:'#fff' }}
-                                        formatter={(v)=> `${Math.round(v*10)/10}%`}
-                                    />
-                                    <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12, color:'#fff' }} />
-                                    <defs>
-                                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                                            <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
-                                            <feMerge>
-                                                <feMergeNode in="coloredBlur"/>
-                                                <feMergeNode in="SourceGraphic"/>
-                                            </feMerge>
-                                        </filter>
-                                    </defs>
-                                    {companies.map((c,i)=> (
-                                        <Line
-                                            key={c}
-                                            type="monotone"
-                                            dataKey={c}
-                                            stroke={COLORS[i%COLORS.length]}
-                                            strokeWidth={3}
-                                            dot={false}
-                                            filter="url(#glow)"
-                                        />
-                                    ))}
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </Box>
-                    </ChartPanel>
-                </Box>
-
-                {/* Margin（仅在支持时渲染） */}
-                {showMargin && (
-                    <Box sx={{ minWidth: 0 }}>
-                        <ChartPanel title={`${(isModeMargins ? "Gross Income" : metricSel)} Margin`}>
-                            <Box key={`m|${chartKey}`} sx={{ width:"100%", minWidth: 0, bgcolor:'#111', borderRadius: 1 }}>
-                                <ResponsiveContainer width="100%" height={420}>
-                                    <LineChart data={margin} margin={{ top: 16, right: 28, left: 16, bottom: 50 }}>
-                                        <CartesianGrid stroke="#333" strokeDasharray="3 3" />
-                                        <XAxis dataKey="year" stroke="#ddd" tick={{ fill:'#ddd' }} />
-                                        <YAxis tickFormatter={(v)=>`${Math.round(v)}%`} stroke="#ddd" tick={{ fill:'#ddd' }} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor:'#1f1f1f', border:'none', color:'#fff' }}
-                                            labelStyle={{ color:'#fff' }}
-                                            formatter={(v)=> `${Math.round(v*10)/10}%`}
-                                        />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12, color:'#fff' }} />
-                                        <defs>
-                                            <filter id="glow2" x="-50%" y="-50%" width="200%" height="200%">
-                                                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
-                                                <feMerge>
-                                                    <feMergeNode in="coloredBlur"/>
-                                                    <feMergeNode in="SourceGraphic"/>
-                                                </feMerge>
-                                            </filter>
-                                        </defs>
-                                        {companies.map((c,i)=> (
-                                            <Line
-                                                key={c}
-                                                type="monotone"
-                                                dataKey={c}
-                                                stroke={COLORS[i%COLORS.length]}
-                                                strokeWidth={3}
-                                                dot={false}
-                                                filter="url(#glow2)"
-                                            />
-                                        ))}
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </Box>
-                        </ChartPanel>
                     </Box>
-                )}
-            </Box>
 
-            {/* 文本区块：上下排（保持不变） */}
+                    {/* 第二行：Growth + （可选）Margin */}
+                    <Box sx={{
+                        mt: 2, width: "100%",
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', md: showMargin ? '1fr 1fr' : '1fr' },
+                        gap: 2
+                    }}>
+                        {/* Growth */}
+                        <Box sx={{ minWidth: 0 }}>
+                            <ChartPanel title={`${growthMetric} Growth`}>
+                                <Box key={`g|${chartKey}`} sx={{ width:"100%", minWidth: 0, bgcolor:'#111', borderRadius: 1 }}>
+                                    <ResponsiveContainer width="100%" height={420}>
+                                        <LineChart data={growth} margin={{ top: 16, right: 28, left: 16, bottom: 50 }}>
+                                            <CartesianGrid stroke="#333" strokeDasharray="3 3" />
+                                            <XAxis dataKey="year" stroke="#ddd" tick={{ fill:'#ddd' }} />
+                                            <YAxis tickFormatter={(v)=>`${Math.round(v)}%`} stroke="#ddd" tick={{ fill:'#ddd' }} />
+                                            <Tooltip
+                                                contentStyle={{ backgroundColor:'#1f1f1f', border:'none', color:'#fff' }}
+                                                labelStyle={{ color:'#fff' }}
+                                                formatter={(v)=> `${Math.round(v*10)/10}%`}
+                                            />
+                                            <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12, color:'#fff' }} />
+                                            <defs>
+                                                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                                                    <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                                                    <feMerge>
+                                                        <feMergeNode in="coloredBlur"/>
+                                                        <feMergeNode in="SourceGraphic"/>
+                                                    </feMerge>
+                                                </filter>
+                                            </defs>
+                                            {companies.map((c,i)=> (
+                                                <Line
+                                                    key={c}
+                                                    type="monotone"
+                                                    dataKey={c}
+                                                    stroke={COLORS[i%COLORS.length]}
+                                                    strokeWidth={3}
+                                                    dot={false}
+                                                    filter="url(#glow)"
+                                                />
+                                            ))}
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </Box>
+                            </ChartPanel>
+                        </Box>
+
+                        {/* Margin（仅在支持时渲染） */}
+                        {showMargin && (
+                            <Box sx={{ minWidth: 0 }}>
+                                <ChartPanel title={`${metricSel} Margin`}>
+                                    <Box key={`m|${chartKey}`} sx={{ width:"100%", minWidth: 0, bgcolor:'#111', borderRadius: 1 }}>
+                                        <ResponsiveContainer width="100%" height={420}>
+                                            <LineChart data={margin} margin={{ top: 16, right: 28, left: 16, bottom: 50 }}>
+                                                <CartesianGrid stroke="#333" strokeDasharray="3 3" />
+                                                <XAxis dataKey="year" stroke="#ddd" tick={{ fill:'#ddd' }} />
+                                                <YAxis tickFormatter={(v)=>`${Math.round(v)}%`} stroke="#ddd" tick={{ fill:'#ddd' }} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor:'#1f1f1f', border:'none', color:'#fff' }}
+                                                    labelStyle={{ color:'#fff' }}
+                                                    formatter={(v)=> `${Math.round(v*10)/10}%`}
+                                                />
+                                                <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: 12, color:'#fff' }} />
+                                                <defs>
+                                                    <filter id="glow2" x="-50%" y="-50%" width="200%" height="200%">
+                                                        <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                                                        <feMerge>
+                                                            <feMergeNode in="coloredBlur"/>
+                                                            <feMergeNode in="SourceGraphic"/>
+                                                        </feMerge>
+                                                    </filter>
+                                                </defs>
+                                                {companies.map((c,i)=> (
+                                                    <Line
+                                                        key={c}
+                                                        type="monotone"
+                                                        dataKey={c}
+                                                        stroke={COLORS[i%COLORS.length]}
+                                                        strokeWidth={3}
+                                                        dot={false}
+                                                        filter="url(#glow2)"
+                                                    />
+                                                ))}
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </Box>
+                                </ChartPanel>
+                            </Box>
+                        )}
+                    </Box>
+                </>
+            )}
+
+            {/* 文本区块（保持不变） */}
             <Paper elevation={0} sx={{ mt: 3, p: 2, borderRadius: 2, border: '1px solid #e0e0e0', width:"100%" }}>
                 <Typography sx={{
                     mb: 1, fontWeight: 700, color: "#6464A0",

@@ -1,4 +1,3 @@
-// src/App.jsx
 import * as React from 'react'
 import { Routes, Route, Navigate, useLocation, NavLink, Outlet } from 'react-router-dom'
 import Container from '@mui/material/Container'
@@ -20,17 +19,18 @@ import Avatar from '@mui/material/Avatar'
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 
-// Auth pages
+// ✅ 修正后的导入路径
+import GeographicalPerformanceAnalysis from './pages/GeographicalPerformanceAnalysis.jsx'
 import Login from './pages/Auth/Login'
-import Register from './pages/Auth/Register' // ☆ 新增
+import Register from './pages/Auth/Register'
 
 // 顶部一级导航
 const TOP = [
     { key: 'mra', label: 'Market Reach Analysis', path: '/mra/geo' },
-    { key: 'cp',  label: 'Competitive Positioning', path: '/cp/cvo' },
-    { key: 'ca',  label: 'Comparative Analysis', path: '/ca' },
-    { key: 'fb',  label: 'Financial Benchmarking', path: '/fb' },
-    { key: 'ob',  label: 'Operational Benchmarking', path: '/ob' },
+    { key: 'cp', label: 'Competitive Positioning', path: '/cp/cvo' },
+    { key: 'ca', label: 'Comparative Analysis', path: '/ca' },
+    { key: 'fb', label: 'Financial Benchmarking', path: '/fb' },
+    { key: 'ob', label: 'Operational Benchmarking', path: '/ob' },
 ]
 
 // Competitive Positioning 左侧菜单
@@ -45,18 +45,16 @@ const CP_MENU = [
     { key:'csw', label:'Comparative SWOT',          path:'/cp/csw' },
 ]
 
-// Market Reach Analysis 左侧菜单
+// Market Reach Analysis 左侧菜单（合并后的结构）
 const MRA_MENU = [
-    { key:'positioning', label:'Positioning Comparative Analysis', path:'/mra/positioning' },
-    { key:'geo',         label:'Performance Metric by Country',    path:'/mra/geo' },
-    { key:'share',       label:'Market Share by Country',          path:'/mra/share' },
-    { key:'plant',       label:'Production Plant',                  path:'/mra/plant' },
-    { key:'bench',       label:'Industry Benchmarks',              path:'/mra/benchmarks' },
-    { key:'scale',       label:'Scale-Value',                       path:'/mra/scale-value' },
-    { key:'reach',       label:'Market Reach',                      path:'/mra/market-reach' },
-    { key:'battle',      label:'Battlefield Positioning',           path:'/mra/battlefield' },
-    { key:'channel',     label:'Channel Mix Comparison',            path:'/mra/channel-mix' },
-    { key:'vi',          label:'Vertical Integration',              path:'/mra/vertical-integration' },
+    { key:'select',  label:'Competitor Selection',               path:'/mra/competitor-selection' },
+    { key:'geo',     label:'Geographical Performance Analysis',  path:'/mra/geo' },
+    { key:'bench',   label:'Industry Benchmarks',                path:'/mra/benchmarks' },
+    { key:'scale',   label:'Scale-Value Comparison',             path:'/mra/scale-value' },
+    { key:'battle',  label:'Battlefield Positioning',            path:'/mra/battlefield' },
+    { key:'reach',   label:'Market Reach Analysis',              path:'/mra/market-reach' },
+    { key:'channel', label:'Channel Mix Comparison',             path:'/mra/channel-mix' },
+    { key:'via',     label:'Vertical Integration Assessment',    path:'/mra/vertical-integration' },
 ]
 
 /* 顶部品牌条 */
@@ -78,7 +76,6 @@ function BrandBar(){
                         <Button color="inherit" size="small" sx={{ textTransform:'none' }}>Set up</Button>
                         <Button color="inherit" size="small" sx={{ textTransform:'none' }}>Help</Button>
                         <Button component={NavLink} to="/auth/login" color="inherit" size="small" sx={{ textTransform:'none' }}>Login</Button>
-                        {/* ☆ 新增 Register 入口 */}
                         <Button component={NavLink} to="/auth/register" color="inherit" size="small" sx={{ textTransform:'none' }}>Register</Button>
                         <Avatar sx={{ width: 28, height: 28 }}>F</Avatar>
                     </Stack>
@@ -179,7 +176,7 @@ const Placeholder = ({ title }) => (
     </div>
 )
 
-// 引入页面
+// 其它页面
 import CoreValueOffer from './pages/CoreValueOffer'
 import FBLayout from './pages/FBLayout'
 import FinancialComparativeAnalysis from './pages/FinancialComparativeAnalysis'
@@ -188,40 +185,37 @@ export default function App(){
     const location = useLocation()
     const isAuth = location.pathname.startsWith('/auth')
 
-    // 认证分支：只渲染登录/注册等独立页面
     if (isAuth) {
         return (
             <Routes>
                 <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/register" element={<Register />} /> {/* ☆ 新增注册路由 */}
+                <Route path="/auth/register" element={<Register />} />
                 <Route path="*" element={<Navigate to="/auth/login" replace />} />
             </Routes>
         )
     }
 
-    // 业务分支
     return (
         <Frame>
             <Routes>
-                {/* 默认跳转 */}
                 <Route path="/" element={<Navigate to="/mra/geo" replace/>} />
 
-                {/* Market Reach Analysis */}
+                {/* ✅ MRA 部分 */}
                 <Route path="/mra" element={<MRALayout />}>
-                    <Route path="positioning" element={<Placeholder title="Positioning Comparative Analysis" />} />
-                    <Route path="geo" element={<Placeholder title="Performance Metric by Country" />} />
-                    <Route path="share" element={<Placeholder title="Market Share by Country" />} />
-                    <Route path="plant" element={<Placeholder title="Production Plant" />} />
+                    <Route path="competitor-selection" element={<Placeholder title="Competitor Selection" />} />
+                    <Route path="geo" element={<GeographicalPerformanceAnalysis />} />
+                    <Route path="share" element={<Navigate to="/mra/geo" replace />} />
+                    <Route path="plant" element={<Navigate to="/mra/geo" replace />} />
                     <Route path="benchmarks" element={<Placeholder title="Industry Benchmarks" />} />
-                    <Route path="scale-value" element={<Placeholder title="Scale-Value" />} />
-                    <Route path="market-reach" element={<Placeholder title="Market Reach" />} />
+                    <Route path="scale-value" element={<Placeholder title="Scale-Value Comparison" />} />
+                    <Route path="market-reach" element={<Placeholder title="Market Reach Analysis" />} />
                     <Route path="battlefield" element={<Placeholder title="Battlefield Positioning" />} />
                     <Route path="channel-mix" element={<Placeholder title="Channel Mix Comparison" />} />
-                    <Route path="vertical-integration" element={<Placeholder title="Vertical Integration" />} />
+                    <Route path="vertical-integration" element={<Placeholder title="Vertical Integration Assessment" />} />
                     <Route path="*" element={<Navigate to="/mra/geo" replace/>} />
                 </Route>
 
-                {/* Competitive Positioning */}
+                {/* CP */}
                 <Route path="/cp" element={<CPLayout />}>
                     <Route path="cvo" element={<CoreValueOffer />} />
                     <Route path="cbd" element={<Placeholder title="Core Brand Differentiator" />} />
@@ -234,10 +228,9 @@ export default function App(){
                     <Route path="*" element={<Navigate to="/cp/cvo" replace/>} />
                 </Route>
 
-                {/* Comparative Analysis */}
                 <Route path="/ca" element={<Placeholder title="Comparative Analysis (coming soon)" />} />
 
-                {/* Financial Benchmarking */}
+                {/* FB */}
                 <Route path="/fb" element={<FBLayout />}>
                     <Route index element={<FinancialComparativeAnalysis />} />
                     <Route path="revenue" element={<Placeholder title="Revenue Comparison" />} />
@@ -250,9 +243,7 @@ export default function App(){
                     <Route path="*" element={<Navigate to="/fb" replace/>} />
                 </Route>
 
-                {/* Operational Benchmarking */}
                 <Route path="/ob" element={<Placeholder title="Operational Benchmarking (coming soon)" />} />
-
                 <Route path="*" element={<Navigate to="/mra/geo" replace/>} />
             </Routes>
         </Frame>

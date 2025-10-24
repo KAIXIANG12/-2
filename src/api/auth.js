@@ -3,19 +3,31 @@ import { api, AT, RT } from "./client";
 
 const unwrap = (res) => res.data?.data ?? res.data;
 
-export async function login(payload /* {email,password} */) {
+/**
+ * 登录
+ * payload: { email, password }
+ */
+export async function login(payload) {
     const data = unwrap(await api.post("/auth/login", payload));
     if (data?.accessToken) AT.set(data.accessToken);
     if (data?.refreshToken) RT.set(data.refreshToken);
     return data;
 }
 
-export async function registerUser(payload /* RegisterRequest */) {
+/**
+ * 注册
+ * payload: RegisterRequest
+ */
+export async function registerUser(payload) {
     return unwrap(await api.post("/auth/register", payload));
 }
 
+/**
+ * 刷新令牌
+ * 后端签名: @RequestBody String refreshToken
+ * 因此 body 必须传“纯字符串”
+ */
 export async function refreshToken(rawRefreshToken) {
-    // ⚠️ 后端签名是 @RequestBody String refreshToken，因此 body 需为“纯字符串”
     const res = await api.post("/auth/refresh", rawRefreshToken, {
         headers: { "Content-Type": "application/json" },
     });

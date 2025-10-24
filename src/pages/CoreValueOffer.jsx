@@ -106,7 +106,7 @@ export default function CoreValueOffer() {
     const [filterAnchor, setFilterAnchor] = useState(null);
     const [useVisibleForPct, setUseVisibleForPct] = useState(false);
 
-    // 选中行（用于雷达高亮）
+    // 选中行（仅用于行选态，不再额外渲染 3 条高亮 Radar）
     const [selectedId, setSelectedId] = useState(null);
 
     // 通知
@@ -117,10 +117,7 @@ export default function CoreValueOffer() {
 
     // 新增
     const add = () =>
-        setRows((rs) => [
-            ...rs,
-            { id: uid(), name: "Competitor", pl: 5, oe: 5, ci: 5 },
-        ]);
+        setRows((rs) => [...rs, { id: uid(), name: "Competitor", pl: 5, oe: 5, ci: 5 }]);
 
     // 行内删除（禁删 Our Company）
     const removeRow = (r) => {
@@ -176,7 +173,6 @@ export default function CoreValueOffer() {
         OE: +r.oe,
         CI: +r.ci,
     }));
-    const selectedRow = rows.find((r) => r.id === selectedId);
 
     // 样式
     const headCell = {
@@ -213,9 +209,7 @@ export default function CoreValueOffer() {
             if (!parsed.length) throw new Error("Empty file");
             setRows((rs) => {
                 const ours =
-                    rs.find(
-                        (r) => r.name.trim().toLowerCase() === "our company"
-                    ) || INIT[0];
+                    rs.find((r) => r.name.trim().toLowerCase() === "our company") || INIT[0];
                 const others = parsed.filter(
                     (p) => p.name.trim().toLowerCase() !== "our company"
                 );
@@ -232,7 +226,6 @@ export default function CoreValueOffer() {
     /* ---------- 导出 Strategic Report（PDF） ---------- */
     const handleExportReport = async () => {
         if (!exportRef.current) return;
-        // 1) 截图容器
         const canvas = await html2canvas(exportRef.current, {
             backgroundColor: "#ffffff",
             scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio,
@@ -240,7 +233,6 @@ export default function CoreValueOffer() {
         });
         const imgData = canvas.toDataURL("image/png");
 
-        // 2) 计算分页并写入 PDF（A4 纵向）
         const pdf = new jsPDF("p", "mm", "a4");
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
@@ -270,28 +262,20 @@ export default function CoreValueOffer() {
             heightLeft -= pageHeight - 10;
         }
 
-        const ts = new Date()
-            .toISOString()
-            .replace(/[-:T]/g, "")
-            .slice(0, 14);
+        const ts = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
         pdf.save(`Strategic_Report_${ts}.pdf`);
     };
 
     return (
         <Box ref={exportRef}>
-            {/* 工具条：Add / Import / Search / Filter / Strategic Report */}
+            {/* 工具条：Add / Import / Search / Filter / Strategic Report（蓝色文字链接） */}
             <Stack
                 direction="row"
                 spacing={1.5}
                 alignItems="center"
                 sx={{ mb: 1.25, flexWrap: "wrap" }}
             >
-                <Link
-                    underline="hover"
-                    component="button"
-                    onClick={add}
-                    sx={{ fontWeight: 600 }}
-                >
+                <Link underline="hover" component="button" onClick={add} sx={{ fontWeight: 600 }}>
                     Add Competitor
                 </Link>
 
@@ -303,13 +287,7 @@ export default function CoreValueOffer() {
                 >
                     Import CSV
                 </Button>
-                <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".csv"
-                    hidden
-                    onChange={onImportCSV}
-                />
+                <input ref={fileRef} type="file" accept=".csv" hidden onChange={onImportCSV} />
 
                 <TextField
                     size="small"
@@ -341,19 +319,18 @@ export default function CoreValueOffer() {
 
                 <Box sx={{ flex: 1 }} />
 
-                {/* ✅ 黑色 Strategic Report：导出 PDF */}
-                <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleExportReport}
-                    sx={{
-                        textTransform: "none",
-                        bgcolor: "#000",
-                        "&:hover": { bgcolor: "#111" },
+                {/* ✅ 蓝色文字链接：导出 PDF */}
+                <Link
+                    href="#"
+                    underline="hover"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        handleExportReport();
                     }}
+                    sx={{ fontSize: 14 }}
                 >
                     Strategic Report
-                </Button>
+                </Link>
 
                 {/* 过滤弹层 */}
                 <Popover
@@ -366,21 +343,9 @@ export default function CoreValueOffer() {
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>
                             Filter by score range (1–10)
                         </Typography>
-                        <Range
-                            label="Product Leadership"
-                            value={plRange}
-                            onChange={setPlRange}
-                        />
-                        <Range
-                            label="Operational Excellence"
-                            value={oeRange}
-                            onChange={setOeRange}
-                        />
-                        <Range
-                            label="Customer Intimacy"
-                            value={ciRange}
-                            onChange={setCiRange}
-                        />
+                        <Range label="Product Leadership" value={plRange} onChange={setPlRange} />
+                        <Range label="Operational Excellence" value={oeRange} onChange={setOeRange} />
+                        <Range label="Customer Intimacy" value={ciRange} onChange={setCiRange} />
 
                         <FormControlLabel
                             control={
@@ -468,9 +433,7 @@ export default function CoreValueOffer() {
                                                     value={r.pl}
                                                     onChange={(e) =>
                                                         setRows((rs) =>
-                                                            rs.map((x) =>
-                                                                x.id === r.id ? { ...x, pl: clamp(e.target.value) } : x
-                                                            )
+                                                            rs.map((x) => (x.id === r.id ? { ...x, pl: clamp(e.target.value) } : x))
                                                         )
                                                     }
                                                     inputProps={{ min: 1, max: 10 }}
@@ -486,9 +449,7 @@ export default function CoreValueOffer() {
                                                     value={r.oe}
                                                     onChange={(e) =>
                                                         setRows((rs) =>
-                                                            rs.map((x) =>
-                                                                x.id === r.id ? { ...x, oe: clamp(e.target.value) } : x
-                                                            )
+                                                            rs.map((x) => (x.id === r.id ? { ...x, oe: clamp(e.target.value) } : x))
                                                         )
                                                     }
                                                     inputProps={{ min: 1, max: 10 }}
@@ -504,9 +465,7 @@ export default function CoreValueOffer() {
                                                     value={r.ci}
                                                     onChange={(e) =>
                                                         setRows((rs) =>
-                                                            rs.map((x) =>
-                                                                x.id === r.id ? { ...x, ci: clamp(e.target.value) } : x
-                                                            )
+                                                            rs.map((x) => (x.id === r.id ? { ...x, ci: clamp(e.target.value) } : x))
                                                         )
                                                     }
                                                     inputProps={{ min: 1, max: 10 }}
@@ -567,8 +526,11 @@ export default function CoreValueOffer() {
                     </TableContainer>
                 </Paper>
 
-                {/* 雷达图卡片（优化样式，无蓝色链接按钮） */}
-                <Paper variant="outlined" sx={{ width: { xs: "100%", md: 560 }, borderRadius: 3, pt: 1, px: 1.5, pb: 2 }}>
+                {/* 雷达图卡片（去掉“Competitor X • CI/OE/PL”的额外高亮曲线） */}
+                <Paper
+                    variant="outlined"
+                    sx={{ width: { xs: "100%", md: 560 }, borderRadius: 3, pt: 1, px: 1.5, pb: 2 }}
+                >
                     <Box
                         sx={{
                             p: 1,
@@ -604,8 +566,7 @@ export default function CoreValueOffer() {
                                         dataKey="PL"
                                         stroke="#2F87D1"
                                         fill="#2F87D1"
-                                        fillOpacity={selectedRow ? 0.04 : 0.1}
-                                        strokeOpacity={selectedRow ? 0.35 : 1}
+                                        fillOpacity={0.1}
                                         strokeWidth={3}
                                         dot={false}
                                         isAnimationActive={false}
@@ -615,8 +576,7 @@ export default function CoreValueOffer() {
                                         dataKey="OE"
                                         stroke="#C061C3"
                                         fill="#C061C3"
-                                        fillOpacity={selectedRow ? 0.04 : 0.1}
-                                        strokeOpacity={selectedRow ? 0.35 : 1}
+                                        fillOpacity={0.1}
                                         strokeWidth={3}
                                         dot={false}
                                         isAnimationActive={false}
@@ -626,45 +586,12 @@ export default function CoreValueOffer() {
                                         dataKey="CI"
                                         stroke="#F39C12"
                                         fill="#F39C12"
-                                        fillOpacity={selectedRow ? 0.04 : 0.1}
-                                        strokeOpacity={selectedRow ? 0.35 : 1}
+                                        fillOpacity={0.1}
                                         strokeWidth={3}
                                         dot={false}
                                         isAnimationActive={false}
                                     />
-
-                                    {/* 高亮选中行 */}
-                                    {selectedRow && (
-                                        <>
-                                            <Radar
-                                                name={`${selectedRow.name} • PL`}
-                                                dataKey="PL"
-                                                stroke="#2F87D1"
-                                                fill="#2F87D1"
-                                                fillOpacity={0.18}
-                                                strokeWidth={3}
-                                                data={radarData.filter((d) => d.name === selectedRow.name)}
-                                            />
-                                            <Radar
-                                                name={`${selectedRow.name} • OE`}
-                                                dataKey="OE"
-                                                stroke="#C061C3"
-                                                fill="#C061C3"
-                                                fillOpacity={0.18}
-                                                strokeWidth={3}
-                                                data={radarData.filter((d) => d.name === selectedRow.name)}
-                                            />
-                                            <Radar
-                                                name={`${selectedRow.name} • CI`}
-                                                dataKey="CI"
-                                                stroke="#F39C12"
-                                                fill="#F39C12"
-                                                fillOpacity={0.18}
-                                                strokeWidth={3}
-                                                data={radarData.filter((d) => d.name === selectedRow.name)}
-                                            />
-                                        </>
-                                    )}
+                                    {/* ✅ 不再添加任何“选中行专属”的额外 Radar，避免 legend 出现 “Competitor X • CI/OE/PL” */}
                                 </RadarChart>
                             </ResponsiveContainer>
                         </div>
