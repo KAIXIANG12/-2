@@ -29,7 +29,8 @@ export async function registerUser(payload) {
  */
 export async function refreshToken(rawRefreshToken) {
     const res = await api.post("/auth/refresh", rawRefreshToken, {
-        headers: { "Content-Type": "application/json" },
+        // 关键修改：发送纯文本，避免 JSON 包一层引号
+        headers: { "Content-Type": "text/plain" },
     });
     const data = unwrap(res);
     if (data?.accessToken) AT.set(data.accessToken);
@@ -42,6 +43,7 @@ export async function getMe() {
 }
 
 export function logout() {
-    AT.clear(); RT.clear();
+    AT.clear();
+    RT.clear();
     window.location.replace("/auth/login");
 }
