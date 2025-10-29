@@ -2,44 +2,59 @@
 import axios from "axios";
 
 /**
- * 后端同学让本地 8080 测试：
- * - 默认 BASE_URL = http://localhost:8080
- * - 也支持用 Vite 环境变量覆盖：VITE_API_BASE_URL
- *   例如 .env 里写：VITE_API_BASE_URL=http://localhost:8080
+ * ✅ 后端同学本地测试说明：
+ * - 默认 BASE_URL = "http://localhost:8080"
+ * - 如果你有 .env：VITE_API_BASE_URL=http://localhost:8080
  */
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
-// axios 实例：所有 /auth/* 请求都会拼到 BASE_URL 下
+/**
+ * ✅ axios 实例
+ * 所有 /auth/* 请求都会自动拼到 http://localhost:8080/
+ */
 const api = axios.create({
     baseURL: BASE_URL,
     timeout: 15000,
 });
 
-// 轻量 token 存取（AT 放 sessionStorage，RT 放 localStorage）
+/**
+ * ✅ Token 存储方案（轻量 MVP）
+ * Access Token  → sessionStorage
+ * Refresh Token → localStorage
+ */
 const AT = {
     get: () => sessionStorage.getItem("access_token"),
     set: (v) => sessionStorage.setItem("access_token", v),
-    clear: () => sessionStorage.removeItem("access_token"),
+    clear: () => sessionStorage.removeItem("access_token")
 };
+
 const RT = {
     get: () => localStorage.getItem("refresh_token"),
     set: (v) => localStorage.setItem("refresh_token", v),
-    clear: () => localStorage.removeItem("refresh_token"),
+    clear: () => localStorage.removeItem("refresh_token")
 };
 
-// 请求拦截：自动带上 Bearer
+/**
+ * ✅ 请求拦截器：自动附带 Bearer Token
+ */
 api.interceptors.request.use((cfg) => {
-    const at = AT.get();
-    if (at) cfg.headers.Authorization = `Bearer ${at}`;
+    const token = AT.get();
+    if (token) cfg.headers.Authorization = `Bearer ${token}`;
     return cfg;
 });
 
-// 响应拦截：遇到 401 自动刷新（后端 @RequestBody String refreshToken → body 需要“纯字符串”）
+/**
+ * ✅ 响应拦截器：401 自动刷新
+ * Spring Boot 那边 @RequestBody String refreshToken → body 必须是纯字符串
+ */
 let refreshing = null;
+
 api.interceptors.response.use(
-    (r) => r,
+    (res) => res,
     async (err) => {
         const { response, config } = err || {};
+
+        // 没有响应 / 不是 401 / 该请求已重试过 → 直接抛出
         if (!response || response.status !== 401 || config.__retried) throw err;
 
         try {
@@ -47,29 +62,32 @@ api.interceptors.response.use(
                 const rt = RT.get();
                 if (!rt) throw err;
 
-                // 用绝对地址，确保不受 baseURL/相对路径干扰
+                // ✅ 必须用绝对地址，不走默认 baseURL，避免路径被干扰
                 refreshing = axios.post(`${BASE_URL}/auth/refresh`, rt, {
                     headers: { "Content-Type": "application/json" },
-                    timeout: 15000,
+                    timeout: 15000
                 });
             }
 
-            const res = await refreshing;
+            const result = await refreshing;
             refreshing = null;
 
-            const data = res.data?.data ?? res.data;
+            const data = result.data?.data ?? result.data;
+
+            // ✅ 刷新后写回 Token
             if (data?.accessToken) AT.set(data.accessToken);
             if (data?.refreshToken) RT.set(data.refreshToken);
 
-            // 重放原请求
+            // ✅ 重发原请求
             config.__retried = true;
             config.headers = config.headers || {};
             config.headers.Authorization = `Bearer ${data.accessToken}`;
-            // 用我们同一个 axios 实例发起（保留拦截器等）
             return api(config);
         } catch (e) {
+            // ✅ 刷新失败 → 清空登录状态 → 返回登录页
             refreshing = null;
-            AT.clear(); RT.clear();
+            AT.clear();
+            RT.clear();
             window.location.replace("/auth/login");
             throw err;
         }

@@ -9,6 +9,8 @@ import {
     ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
     LineChart, Line, ComposedChart, ReferenceArea
 } from "recharts";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 /* ---------------- Demo 数据（含 Pretax Income；无 R&D） ---------------- */
 const DATA = {
@@ -244,14 +246,16 @@ export default function FinancialComparativeAnalysis(){
     const [chartType, setChartType] = React.useState("bar"); // bar | line
 
     const fileInputRef = React.useRef(null);
+    const exportRef = React.useRef(null); // 导出 PDF 用
 
     const isModeEPS = metricSel === "EPS"; // EPS 选择时不渲染图表
     const baseForTop = metricSel;
     const growthMetric = metricSel;
     const marginMetric = metricSel;
 
-    const allowedMetrics = raw.metrics?.length ? METRIC_LIST.filter(m=> raw.metrics.includes(m)) : METRIC_LIST;
-    const dropdownOptions = [...allowedMetrics]; // ✅ 移除了 “Margins / Growth Rates”
+    const METRIC_LIST_LOCAL = React.useRef(METRIC_LIST).current;
+    const allowedMetrics = raw.metrics?.length ? METRIC_LIST_LOCAL.filter(m=> raw.metrics.includes(m)) : METRIC_LIST_LOCAL;
+    const dropdownOptions = [...allowedMetrics];
 
     const byYear     = React.useMemo(()=> buildSeries(raw, baseForTop, companies), [raw, baseForTop, companies]);
     const byCompany  = React.useMemo(()=> buildByCompany(raw, baseForTop, companies), [raw, baseForTop, companies]);
@@ -294,8 +298,60 @@ export default function FinancialComparativeAnalysis(){
         }
     };
 
+    // 导出 CSV（扁平：metric,company,year,value）
+    const handleExportCSV = () => {
+        const lines = ["metric,company,year,value"];
+        (raw.metrics || dropdownOptions).forEach(metric => {
+            const m = raw.series?.[metric] || {};
+            (raw.companies || companies).forEach(c => {
+                (raw.years || []).forEach(y => {
+                    const v = m?.[c]?.[String(y)];
+                    if (v === undefined || v === null) return;
+                    lines.push(`${metric},${c},${y},${v}`);
+                });
+            });
+        });
+        const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `financial_comparative_${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // 导出 PDF（整页）
+    const handleExportPDF = async () => {
+        if (!exportRef.current) return;
+        const canvas = await html2canvas(exportRef.current, {
+            backgroundColor: "#ffffff",
+            scale: window.devicePixelRatio < 2 ? 2 : window.devicePixelRatio,
+            useCORS: true,
+        });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let position = 10;
+        let heightLeft = imgHeight;
+
+        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight, "", "FAST");
+        heightLeft -= (pageHeight - position);
+
+        while (heightLeft > 0) {
+            pdf.addPage();
+            position = 10;
+            pdf.addImage(imgData, "PNG", 10, position - (imgHeight - heightLeft), imgWidth, imgHeight, "", "FAST");
+            heightLeft -= (pageHeight - position);
+        }
+        pdf.save(`Financial_Comparative_${Date.now()}.pdf`);
+    };
+
     return (
-        <Box sx={{ width:"100%" }}>
+        <Box ref={exportRef} sx={{ width:"100%" }}>
             {/* 工具条 */}
             <Paper variant="outlined" sx={{ p:2, width:"100%" }}>
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1, flexWrap:'wrap' }}>
@@ -364,14 +420,25 @@ export default function FinancialComparativeAnalysis(){
                         </FormControl>
                     </Stack>
 
-                    <Link
-                        href="#"
-                        underline="hover"
-                        onClick={(e)=>{ e.preventDefault(); alert('Strategic Report (export)'); }}
-                        sx={{ fontWeight:700, color:'#3f51b5', mr: 4 }}
-                    >
-                        Strategic Report
-                    </Link>
+                    {/* 右上角：Strategic Report 导出 PDF + Export CSV */}
+                    <Stack direction="row" spacing={3} alignItems="center" sx={{ mr: 4 }}>
+                        <Link
+                            href="#"
+                            underline="hover"
+                            onClick={(e)=>{ e.preventDefault(); handleExportCSV(); }}
+                            sx={{ fontWeight:700, color:'#3f51b5' }}
+                        >
+                            Export CSV
+                        </Link>
+                        <Link
+                            href="#"
+                            underline="hover"
+                            onClick={(e)=>{ e.preventDefault(); handleExportPDF(); }}
+                            sx={{ fontWeight:700, color:'#3f51b5' }}
+                        >
+                            Strategic Report
+                        </Link>
+                    </Stack>
                 </Stack>
             </Paper>
 
