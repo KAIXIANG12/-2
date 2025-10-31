@@ -4,15 +4,6 @@ import Plot from "react-plotly.js";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-/**
- * Geographical Performance Analysis (Merged)
- * - Merges: Geographical Performance / Market Share by Country / Production Plant
- * - BRD §6.1.* compliant: metric dropdown, dual view, maps, tables, charts, AI-insight slot
- *
- * NOTE: 内置 mock 数据与最小样式，便于先跑通交互与结构。
- * 真实接入时，只需替换 raw 数据与计算方法（保持 shape）。
- */
-
 /* -------------------------- 初始 MOCK 数据 -------------------------- */
 const COUNTRIES = ["USA", "Canada", "UK", "Germany", "France", "Japan", "Italy", "Spain", "Netherlands", "China"];
 const COMPETITORS = ["Our Company", "Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4"];
@@ -49,12 +40,7 @@ function buildInitialRows() {
                 country,
                 competitor: comp,
                 year: 2024,
-                value: {
-                    revenue: s.revenue,
-                    workforce: s.workforce,
-                    capacity: s.capacity,
-                    plants: s.plants
-                },
+                value: { revenue: s.revenue, workforce: s.workforce, capacity: s.capacity, plants: s.plants },
                 share: s.market_share,
             });
         });
@@ -79,11 +65,9 @@ function getRows(DATA, metricKey, viewMode, selectedCompetitors) {
     }));
 }
 
-// Top10 计算（份额：company=我司份额；competitor=各国领先者份额；其它指标=求和）
 function topCountries(DATA, metricKey, viewMode, selectedCompetitors) {
     const rows = getRows(DATA, metricKey, viewMode, selectedCompetitors);
-    const agg = new Map(); // country -> value
-
+    const agg = new Map();
     if (metricKey === "market_share") {
         if (viewMode === "company") {
             rows.filter(r => r.competitor === "Our Company")
@@ -99,18 +83,30 @@ function topCountries(DATA, metricKey, viewMode, selectedCompetitors) {
     } else {
         rows.forEach(r => agg.set(r.country, (agg.get(r.country) ?? 0) + (Number.isFinite(r.metric) ? r.metric : 0)));
     }
-
     return Array.from(agg.entries())
         .map(([country, total]) => ({ country, total }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 10);
 }
 
+/* —— 修复：返回饼图安全数据 —— */
 function pieDataByCountry(DATA, country, metricKey, viewMode, selectedCompetitors) {
     const rows = getRows(DATA, metricKey, viewMode, selectedCompetitors).filter(r => r.country === country);
-    const labels = rows.map(r => r.competitor);
-    const values = metricKey === "market_share" ? rows.map(r => r.share) : rows.map(r => r.metric);
-    return { labels, values };
+
+    const pairs = rows.map(r => {
+        const raw = metricKey === "market_share" ? r.share : r.metric;
+        const val = Number(raw);
+        return {
+            label: r.competitor || "N/A",
+            value: Number.isFinite(val) && val >= 0 ? val : 0
+        };
+    }).filter(p => p.value > 0);
+
+    if (pairs.length === 0) {
+        // 防止 Plotly 空数组或全 0 崩溃
+        return { labels: ["No data"], values: [1], isEmpty: true };
+    }
+    return { labels: pairs.map(p => p.label), values: pairs.map(p => p.value), isEmpty: false };
 }
 
 function tableData(DATA, metricKey, viewMode, selectedCompetitors) {
@@ -122,7 +118,6 @@ function tableData(DATA, metricKey, viewMode, selectedCompetitors) {
 }
 
 function toCSV(DATA) {
-    // 扁平化为：country,competitor,metric,year,value
     const lines = ["country,competitor,metric,year,value"];
     DATA.forEach(r => {
         lines.push(`${r.country},${r.competitor},market_share,${r.year},${Number(r.share ?? 0)}`);
@@ -134,7 +129,6 @@ function toCSV(DATA) {
 }
 
 function parseCSV(text) {
-    // 期望：country,competitor,metric,year,value
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (!lines.length) throw new Error("CSV is empty");
     const head = lines[0].split(",").map(s => s.trim().toLowerCase());
@@ -246,7 +240,7 @@ const Card = ({title, children}) => (
     </div>
 );
 
-// 地图显示全部国家
+/* ------------------- 地图（你的专业版样式保持不变） ------------------- */
 const WorldMap = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
     const rows = getRows(DATA, metricKey, viewMode, selectedCompetitors);
     const valByCountry = new Map();
@@ -267,6 +261,9 @@ const WorldMap = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
 
     const locations = COUNTRIES.map(cty => iso3[cty] || cty);
     const z = COUNTRIES.map(cty => valByCountry.get(cty) ?? 0);
+    const isPercent = metricKey === "market_share";
+    const hoverTpl = isPercent ? "%{text}<br>%{z:.1f}%<extra></extra>" : "%{text}<br>%{z:.0f}<extra></extra>";
+    const colorbarTitle = METRICS.find(m=>m.key===metricKey)?.label || metricKey;
 
     return (
         <Plot
@@ -277,13 +274,28 @@ const WorldMap = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
                 locationmode: "ISO-3",
                 locations,
                 z,
-                colorscale: "Blues",
-                colorbar: {title: METRICS.find(m=>m.key===metricKey)?.label || metricKey},
-                hovertemplate: "%{location}<br>%{z}<extra></extra>"
+                text: COUNTRIES,
+                colorscale: "YlGnBu",
+                colorbar: { title: colorbarTitle, ticksuffix: isPercent ? "%" : "" },
+                hovertemplate: hoverTpl,
+                zauto: true
             }]}
             layout={{
                 margin:{l:0,r:0,t:0,b:0},
-                geo:{projection:{type:"equirectangular"}}
+                geo:{
+                    projection:{ type:"natural earth" },
+                    fitbounds: "locations",
+                    showcountries: true,
+                    countrycolor: "#d1d5db",
+                    countrywidth: 0.8,
+                    showland: true,
+                    landcolor: "#f5f5f5",
+                    showocean: true,
+                    oceancolor: "#e6f0fa",
+                    lakecolor: "#e6f0fa",
+                    coastlinecolor: "#cbd5e1",
+                    bgcolor: "#ffffff"
+                }
             }}
         />
     );
@@ -295,12 +307,7 @@ const Top10Bar = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
         <Plot
             style={{width:"100%", height:420}}
             config={{displayModeBar:false, responsive:true}}
-            data={[{
-                type:"bar",
-                x: top10.map(x=>x.total),
-                y: top10.map(x=>x.country),
-                orientation:"h"
-            }]}
+            data={[{ type:"bar", x: top10.map(x=>x.total), y: top10.map(x=>x.country), orientation:"h" }]}
             layout={{margin:{l:120,r:10,t:10,b:30}, yaxis:{autorange:"reversed"}, title:"Top 10 Markets"}}
         />
     );
@@ -348,21 +355,28 @@ const MarketTable = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
     );
 };
 
+/* ---------------- Share by Country：修复空/非法值导致不渲染 ---------------- */
 const ShareByCountryGrid = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
     const countries = COUNTRIES.slice(0, 6);
     return (
         <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12}}>
             {countries.map(cty=>{
-                const {labels, values} = pieDataByCountry(DATA, cty, metricKey, viewMode, selectedCompetitors);
+                const {labels, values, isEmpty} = pieDataByCountry(DATA, cty, metricKey, viewMode, selectedCompetitors);
                 return (
                     <div key={cty} style={{background:"#fff", border:"1px solid #e5e7eb", borderRadius:8}}>
                         <div style={{padding:"8px 12px", fontWeight:600}}>{cty}</div>
-                        <Plot
-                            style={{width:"100%", height:260}}
-                            config={{displayModeBar:false, responsive:true}}
-                            data={[{type:"pie", labels, values, textinfo:"label+percent"}]}
-                            layout={{margin:{l:10,r:10,t:0,b:0}, showlegend:false}}
-                        />
+                        {isEmpty ? (
+                            <div style={{height:260, display:"flex", alignItems:"center", justifyContent:"center", color:"#6b7280", fontSize:12}}>
+                                No data for {cty}
+                            </div>
+                        ) : (
+                            <Plot
+                                style={{width:"100%", height:260}}
+                                config={{displayModeBar:false, responsive:true}}
+                                data={[{type:"pie", labels, values, textinfo:"label+percent"}]}
+                                layout={{margin:{l:10,r:10,t:0,b:0}, showlegend:false}}
+                            />
+                        )}
                     </div>
                 );
             })}
@@ -370,22 +384,52 @@ const ShareByCountryGrid = ({ DATA, metricKey, viewMode, selectedCompetitors }) 
     );
 };
 
+/* ---------------- Production Plants（你要的样式） ---------------- */
 const PlantsByCountryGrid = ({ DATA, viewMode, selectedCompetitors }) => {
     const rows = getRows(DATA, "plants", viewMode, selectedCompetitors);
-    const countries = Array.from(new Set(rows.map(r=>r.country))).slice(0,6);
+    const countries = Array.from(new Set(rows.map(r => r.country))).slice(0, 6);
+    const plantMax = Math.max(1, ...rows.map(r => r.plants || 0));
+    const capMax = Math.max(1, ...rows.map(r => r.capacity || 0));
+
     return (
         <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:12}}>
-            {countries.map(cty=>{
-                const subset = rows.filter(r=>r.country===cty);
+            {countries.map(cty => {
+                const subset = rows.filter(r => r.country === cty);
+                const totalPlants = subset.reduce((s, x) => s + (x.plants || 0), 0);
+                const totalCap = subset.reduce((s, x) => s + (x.capacity || 0), 0);
+
                 return (
-                    <div key={cty} style={{background:"#fff", border:"1px solid #e5e7eb", borderRadius:8, padding:12}}>
-                        <div style={{fontWeight:600, marginBottom:8}}>{cty}</div>
-                        {subset.map(s=>(
-                            <div key={s.competitor} style={{marginBottom:8}}>
-                                <div style={{fontSize:12, color:"#6b7280"}}>{s.competitor}</div>
-                                <BarPair label1="Plant #" v1={s.plants} max1={8} label2="Capacity" v2={s.capacity} max2={600}/>
-                            </div>
-                        ))}
+                    <div key={cty} style={panel}>
+                        <div style={panelHeader}>
+                            <span style={countryTitle}>COUNTRY</span>
+                            <span style={countryName}>{cty}</span>
+                        </div>
+
+                        <div style={gridHeader}>
+                            <div style={{padding:"6px 8px"}}>Key Players</div>
+                            <div style={{padding:"6px 8px", textAlign:"center"}}>Plant #</div>
+                            <div style={{padding:"6px 8px", textAlign:"center"}}>Total Capacity</div>
+                        </div>
+
+                        <div>
+                            {subset.map(s => (
+                                <div key={s.competitor} style={gridRow}>
+                                    <div style={cellLeft}>{s.competitor}</div>
+                                    <div style={cellBar}>
+                                        <HBar value={s.plants || 0} max={plantMax} fill="#5b84c6" track="#e8eef7" />
+                                    </div>
+                                    <div style={cellBar}>
+                                        <HBar value={s.capacity || 0} max={capMax} fill="#d8c9a3" track="#f3efe3" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={totalRow}>
+                            <div style={cellLeftBold}>TOTAL</div>
+                            <div style={cellTotal}>{totalPlants}</div>
+                            <div style={cellTotal}>{totalCap}</div>
+                        </div>
                     </div>
                 );
             })}
@@ -393,21 +437,22 @@ const PlantsByCountryGrid = ({ DATA, viewMode, selectedCompetitors }) => {
     );
 };
 
-const BarPair = ({label1, v1, max1, label2, v2, max2}) => {
-    const bar = (v, max) => (
-        <div style={{background:"#e5e7eb", height:8, borderRadius:6}}>
-            <div style={{width:`${Math.min(100, (v/max)*100)}%`, height:8, background:"#60a5fa", borderRadius:6}}/>
-        </div>
-    );
+function HBar({ value, max, fill, track, height = 16 }) {
+    const pct = Math.max(0, Math.min(100, (value / (max || 1)) * 100));
     return (
-        <div>
-            <div style={{display:"flex", justifyContent:"space-between", fontSize:12}}><span>{label1}</span><b>{v1}</b></div>
-            {bar(v1, max1)}
-            <div style={{display:"flex", justifyContent:"space-between", fontSize:12, marginTop:4}}><span>{label2}</span><b>{v2}</b></div>
-            {bar(v2, max2)}
+        <div style={{
+            position:"relative", background: track, height, borderRadius: 6, overflow: "hidden", border: "1px solid #d7dee9"
+        }}>
+            <div style={{ width: `${pct}%`, height: "100%", background: fill }}/>
+            <div style={{
+                position:"absolute", right: 6, top: 0, bottom: 0, display:"flex",
+                alignItems:"center", fontSize: 12, color: "#0f172a", fontWeight: 600
+            }}>
+                {value}
+            </div>
         </div>
     );
-};
+}
 
 const HeatmapMatrix = ({ DATA, metricKey, viewMode, selectedCompetitors }) => {
     const { countries, competitors, byKey } = useMemo(
@@ -439,7 +484,6 @@ const AIInsightsPanel = ({ metricKey }) => (
     </div>
 );
 
-/* ------------------------- Manual Data Entry 弹层 ------------------------- */
 function Modal({ open, onClose, children }) {
     if (!open) return null;
     return (
@@ -461,6 +505,19 @@ function Modal({ open, onClose, children }) {
 const th = { textAlign:"left", background:"#f9fafb", padding:"8px 12px", borderBottom:"1px solid #e5e7eb", position:"sticky", top:0 };
 const td = { padding:"8px 12px", borderBottom:"1px solid #f1f5f9", whiteSpace:"nowrap" };
 
+const panel = { background:"#fff", border:"1px solid #d9dee7", borderRadius:8, boxShadow:"0 1px 0 rgba(16,24,40,.02)", overflow:"hidden" };
+const panelHeader = { display:"flex", alignItems:"baseline", gap:8, padding:"10px 12px", borderBottom:"1px solid #e5e7eb", background:"#f7f9fc" };
+const countryTitle = { fontSize:12, letterSpacing:1.2, color:"#6b7280" };
+const countryName = { fontSize:14, fontWeight:700, color:"#111827" };
+
+const gridHeader = { display:"grid", gridTemplateColumns:"1.2fr 1fr 1fr", background:"#f3f6fb", borderBottom:"1px solid #e5e7eb", color:"#334155", fontWeight:600, fontSize:12 };
+const gridRow = { display:"grid", gridTemplateColumns:"1.2fr 1fr 1fr", alignItems:"center", gap:0, borderBottom:"1px solid #f1f5f9" };
+const cellLeft = { padding:"8px 8px", fontSize:12, color:"#374151", whiteSpace:"nowrap" };
+const cellLeftBold = { padding:"8px 8px", fontSize:12, fontWeight:700, color:"#111827" };
+const cellBar = { padding:"8px 10px" };
+const totalRow = { display:"grid", gridTemplateColumns:"1.2fr 1fr 1fr", background:"#f8fafc", borderTop:"1px solid #e5e7eb", fontWeight:700 };
+const cellTotal = { padding:"8px 10px", textAlign:"right", fontVariantNumeric:"tabular-nums" };
+
 /* ------------------------------- 主页面 ------------------------------- */
 export default function GeographicalPerformanceAnalysis() {
     const [DATA, setDATA] = useState(buildInitialRows());
@@ -470,19 +527,11 @@ export default function GeographicalPerformanceAnalysis() {
     const [selectedCompetitors, setSelectedCompetitors] = useState(new Set(["Our Company","Competitor 1","Competitor 2"]));
     const [toast, setToast] = useState("");
 
-    // Manual Data Entry
     const [dlgOpen, setDlgOpen] = useState(false);
-    const [form, setForm] = useState({
-        country: COUNTRIES[0],
-        competitor: COMPETITORS[0],
-        metric: "market_share",
-        year: 2024,
-        value: 0
-    });
+    const [form, setForm] = useState({ country: COUNTRIES[0], competitor: COMPETITORS[0], metric: "market_share", year: 2024, value: 0 });
 
     const pageRef = useRef(null);
 
-    // ---- 导入 ----
     const handleImport = async (file) => {
         if (!file) return;
         try {
@@ -504,7 +553,6 @@ export default function GeographicalPerformanceAnalysis() {
         }
     };
 
-    // ---- 导出 CSV ----
     const handleExportCSV = () => {
         const csv = toCSV(DATA);
         const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
@@ -516,7 +564,6 @@ export default function GeographicalPerformanceAnalysis() {
         URL.revokeObjectURL(url);
     };
 
-    // ---- 导出 PDF ----
     const handleExportPDF = async () => {
         if (!pageRef.current) return;
         const canvas = await html2canvas(pageRef.current, {
@@ -531,11 +578,9 @@ export default function GeographicalPerformanceAnalysis() {
         const imgWidth = pageWidth - 20;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        let position = 10;
-        let heightLeft = imgHeight;
+        let position = 10; let heightLeft = imgHeight;
         pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight, "", "FAST");
         heightLeft -= (pageHeight - position);
-
         while (heightLeft > 0) {
             pdf.addPage();
             position = 10;
@@ -545,17 +590,11 @@ export default function GeographicalPerformanceAnalysis() {
         pdf.save(`Geographical_Performance_${Date.now()}.pdf`);
     };
 
-    // ---- Refresh Data (模拟) ----
-    const handleRefresh = () => {
-        setDATA(buildInitialRows());
-        setToast("Data refreshed");
-    };
+    const handleRefresh = () => { setDATA(buildInitialRows()); setToast("Data refreshed"); };
 
-    // ---- Manual Data Entry ----
     const openManual = () => { setDlgOpen(true); };
     const submitManual = () => {
         const { country, competitor, metric: m, year, value } = form;
-        // 查找是否已有该 country-competitor-year 行；有则更新，没有则创建
         const idx = DATA.findIndex(r => r.country === country && r.competitor === competitor && r.year === Number(year));
         let next = [...DATA];
         if (idx >= 0) {
@@ -577,22 +616,15 @@ export default function GeographicalPerformanceAnalysis() {
     return (
         <div ref={pageRef} style={{padding:16, background:"#f3f4f6", minHeight:"100vh"}}>
             <Toolbar
-                metric={metric}
-                setMetric={setMetric}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-                selectedCompetitors={selectedCompetitors}
-                setSelectedCompetitors={setSelectedCompetitors}
-                onImport={handleImport}
-                onExportCSV={handleExportCSV}
-                onExportPDF={handleExportPDF}
-                onRefresh={handleRefresh}
-                onOpenManual={openManual}
+                metric={metric} setMetric={setMetric}
+                viewMode={viewMode} setViewMode={setViewMode}
+                selectedCompetitors={selectedCompetitors} setSelectedCompetitors={setSelectedCompetitors}
+                onImport={handleImport} onExportCSV={handleExportCSV} onExportPDF={handleExportPDF}
+                onRefresh={handleRefresh} onOpenManual={openManual}
             />
 
             <SummaryCards DATA={DATA} metricKey={metric} viewMode={viewMode} selectedCompetitors={selectedCompetitors} />
 
-            {/* 主视图区：左地图 + 右Top10 */}
             <div style={{display:"grid", gridTemplateColumns:"2fr 1fr", gap:12}}>
                 <div><WorldMap DATA={DATA} metricKey={metric} viewMode={viewMode} selectedCompetitors={selectedCompetitors} /></div>
                 <div><Top10Bar DATA={DATA} metricKey={metric} viewMode={viewMode} selectedCompetitors={selectedCompetitors} /></div>
@@ -616,26 +648,22 @@ export default function GeographicalPerformanceAnalysis() {
             <div style={{display:"grid", gridTemplateColumns:"2fr 1fr", gap:12, marginTop:12}}>
                 <div>
                     <div style={{background:"#fff", border:"1px solid #e5e7eb", borderRadius:8, padding:12}}>
-                        <b>Missing Data</b>：支持 CSV/JSON 导入补齐 — <a href="#" onClick={(e)=>{e.preventDefault(); handleExportCSV();}}>Export Template</a>
+                        <b>Missing Data</b>：support CSV/JSON import — <a href="#" onClick={(e)=>{e.preventDefault(); handleExportCSV();}}>Export Template</a>
                     </div>
                 </div>
                 <AIInsightsPanel metricKey={metric} />
             </div>
 
-            {/* 轻量 Toast */}
             {toast && (
                 <div
                     onAnimationEnd={()=>setToast("")}
-                    style={{
-                        position:"fixed", bottom:16, left:"50%", transform:"translateX(-50%)",
-                        background:"#111", color:"#fff", padding:"8px 12px", borderRadius:8, opacity:.95
-                    }}
+                    style={{ position:"fixed", bottom:16, left:"50%", transform:"translateX(-50%)",
+                        background:"#111", color:"#fff", padding:"8px 12px", borderRadius:8, opacity:.95 }}
                 >
                     {toast}
                 </div>
             )}
 
-            {/* Manual Data Entry 弹窗 */}
             <Modal open={dlgOpen} onClose={()=>setDlgOpen(false)}>
                 <h3 style={{marginTop:0}}>Manual Data Entry</h3>
                 <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8}}>
