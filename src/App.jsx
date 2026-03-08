@@ -32,6 +32,7 @@ import Register from "./pages/Auth/Register.jsx";
 import CoreValueOffer from "./pages/CoreValueOffer.jsx";
 import FBLayout from "./pages/FBLayout.jsx";
 import FinancialComparativeAnalysis from "./pages/FinancialComparativeAnalysis.jsx";
+import AICopilotWidget from "./components/AICopilotWidget.jsx";
 
 // 顶部一级导航
 const TOP = [
@@ -267,17 +268,21 @@ export default function App() {
 
     if (isAuth) {
         return (
-            <Routes>
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/register" element={<Register />} />
-                <Route path="*" element={<Navigate to="/auth/login" replace />} />
-            </Routes>
+            <>
+                <Routes>
+                    <Route path="/auth/login" element={<Login />} />
+                    <Route path="/auth/register" element={<Register />} />
+                    <Route path="*" element={<Navigate to="/auth/login" replace />} />
+                </Routes>
+                <AICopilotWidget />
+            </>
         );
     }
 
     return (
-        <Frame>
-            <Routes>
+        <>
+            <Frame>
+                <Routes>
                 <Route path="/" element={<Navigate to="/mra/geo" replace />} />
 
                 {/* ✅ MRA */}
@@ -326,7 +331,9 @@ export default function App() {
 
                 <Route path="/ob" element={<Placeholder title="Operational Benchmarking (coming soon)" />} />
                 <Route path="*" element={<Navigate to="/mra/geo" replace />} />
-            </Routes>
-        </Frame>
+                </Routes>
+            </Frame>
+            <AICopilotWidget />
+        </>
     );
 }
