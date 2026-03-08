@@ -246,7 +246,7 @@ function SidebarLayout({ title, items }) {
     );
 }
 
-/* 专用 Layout */
+
 function CPLayout() {
     return <SidebarLayout title="Competitive Positioning" items={CP_MENU} />;
 }
