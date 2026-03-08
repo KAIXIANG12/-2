@@ -32,6 +32,7 @@ import Register from "./pages/Auth/Register.jsx";
 import CoreValueOffer from "./pages/CoreValueOffer.jsx";
 import FBLayout from "./pages/FBLayout.jsx";
 import FinancialComparativeAnalysis from "./pages/FinancialComparativeAnalysis.jsx";
+import AICopilotWidget from "./components/AICopilotWidget.jsx";
 
 // 顶部一级导航
 const TOP = [
@@ -267,66 +268,72 @@ export default function App() {
 
     if (isAuth) {
         return (
-            <Routes>
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/register" element={<Register />} />
-                <Route path="*" element={<Navigate to="/auth/login" replace />} />
-            </Routes>
+            <>
+                <Routes>
+                    <Route path="/auth/login" element={<Login />} />
+                    <Route path="/auth/register" element={<Register />} />
+                    <Route path="*" element={<Navigate to="/auth/login" replace />} />
+                </Routes>
+                <AICopilotWidget />
+            </>
         );
     }
 
     return (
-        <Frame>
-            <Routes>
-                <Route path="/" element={<Navigate to="/mra/geo" replace />} />
+        <>
+            <Frame>
+                <Routes>
+                    <Route path="/" element={<Navigate to="/mra/geo" replace />} />
 
-                {/* ✅ MRA */}
-                <Route path="/mra" element={<MRALayout />}>
-                    <Route path="competitor-selection" element={<CompetitorSelection />} />
-                    <Route path="geo" element={<GeographicalPerformanceAnalysis />} />
-                    <Route path="share" element={<Navigate to="/mra/geo" replace />} />
-                    <Route path="plant" element={<Navigate to="/mra/geo" replace />} />
-                    <Route path="benchmarks" element={<BenchmarkingAnalysis />} />
-                    <Route path="scale-value" element={<Placeholder title="Scale-Value Comparison" />} />
-                    <Route path="market-reach" element={<Placeholder title="Market Reach Analysis" />} />
-                    <Route path="battlefield" element={<Placeholder title="Battlefield Positioning" />} />
-                    <Route path="channel-mix" element={<Placeholder title="Channel Mix Comparison" />} />
-                    <Route path="vertical-integration" element={<Placeholder title="Vertical Integration Assessment" />} />
+                    {/* ✅ MRA */}
+                    <Route path="/mra" element={<MRALayout />}>
+                        <Route path="competitor-selection" element={<CompetitorSelection />} />
+                        <Route path="geo" element={<GeographicalPerformanceAnalysis />} />
+                        <Route path="share" element={<Navigate to="/mra/geo" replace />} />
+                        <Route path="plant" element={<Navigate to="/mra/geo" replace />} />
+                        <Route path="benchmarks" element={<BenchmarkingAnalysis />} />
+                        <Route path="scale-value" element={<Placeholder title="Scale-Value Comparison" />} />
+                        <Route path="market-reach" element={<Placeholder title="Market Reach Analysis" />} />
+                        <Route path="battlefield" element={<Placeholder title="Battlefield Positioning" />} />
+                        <Route path="channel-mix" element={<Placeholder title="Channel Mix Comparison" />} />
+                        <Route path="vertical-integration" element={<Placeholder title="Vertical Integration Assessment" />} />
+                        <Route path="*" element={<Navigate to="/mra/geo" replace />} />
+                    </Route>
+
+                    {/* ✅ CP */}
+                    <Route path="/cp" element={<CPLayout />}>
+                        <Route path="cvo" element={<CoreValueOffer />} />
+                        <Route path="cbd" element={<Placeholder title="Core Brand Differentiator" />} />
+                        <Route path="bep" element={<Placeholder title="Brand Equity Positioning" />} />
+                        <Route path="vbp" element={<Placeholder title="Value Based Positioning" />} />
+                        <Route path="vdm" element={<Placeholder title="Value Drivers Mapping" />} />
+                        <Route path="com" element={<Placeholder title="Competitor Offer Mapping" />} />
+                        <Route path="pp" element={<Placeholder title="Price Positioning" />} />
+                        <Route path="csw" element={<Placeholder title="Comparative SWOT" />} />
+                        <Route path="*" element={<Navigate to="/cp/cvo" replace />} />
+                    </Route>
+
+                    {/* ✅ CA */}
+                    <Route path="/ca" element={<Placeholder title="Comparative Analysis (coming soon)" />} />
+
+                    {/* ✅ FB */}
+                    <Route path="/fb" element={<FBLayout />}>
+                        <Route index element={<FinancialComparativeAnalysis />} />
+                        <Route path="revenue" element={<Placeholder title="Revenue Comparison" />} />
+                        <Route path="trend" element={<Placeholder title="Financial Performance Trend" />} />
+                        <Route path="growth" element={<Placeholder title="Growth Analysis" />} />
+                        <Route path="country" element={<Placeholder title="Country Figures" />} />
+                        <Route path="market-share" element={<Placeholder title="Market Share" />} />
+                        <Route path="market-share-country" element={<Placeholder title="Market Share by Country" />} />
+                        <Route path="csw" element={<Placeholder title="Comparative SWOT" />} />
+                        <Route path="*" element={<Navigate to="/fb" replace />} />
+                    </Route>
+
+                    <Route path="/ob" element={<Placeholder title="Operational Benchmarking (coming soon)" />} />
                     <Route path="*" element={<Navigate to="/mra/geo" replace />} />
-                </Route>
-
-                {/* ✅ CP */}
-                <Route path="/cp" element={<CPLayout />}>
-                    <Route path="cvo" element={<CoreValueOffer />} />
-                    <Route path="cbd" element={<Placeholder title="Core Brand Differentiator" />} />
-                    <Route path="bep" element={<Placeholder title="Brand Equity Positioning" />} />
-                    <Route path="vbp" element={<Placeholder title="Value Based Positioning" />} />
-                    <Route path="vdm" element={<Placeholder title="Value Drivers Mapping" />} />
-                    <Route path="com" element={<Placeholder title="Competitor Offer Mapping" />} />
-                    <Route path="pp" element={<Placeholder title="Price Positioning" />} />
-                    <Route path="csw" element={<Placeholder title="Comparative SWOT" />} />
-                    <Route path="*" element={<Navigate to="/cp/cvo" replace />} />
-                </Route>
-
-                {/* ✅ CA */}
-                <Route path="/ca" element={<Placeholder title="Comparative Analysis (coming soon)" />} />
-
-                {/* ✅ FB */}
-                <Route path="/fb" element={<FBLayout />}>
-                    <Route index element={<FinancialComparativeAnalysis />} />
-                    <Route path="revenue" element={<Placeholder title="Revenue Comparison" />} />
-                    <Route path="trend" element={<Placeholder title="Financial Performance Trend" />} />
-                    <Route path="growth" element={<Placeholder title="Growth Analysis" />} />
-                    <Route path="country" element={<Placeholder title="Country Figures" />} />
-                    <Route path="market-share" element={<Placeholder title="Market Share" />} />
-                    <Route path="market-share-country" element={<Placeholder title="Market Share by Country" />} />
-                    <Route path="csw" element={<Placeholder title="Comparative SWOT" />} />
-                    <Route path="*" element={<Navigate to="/fb" replace />} />
-                </Route>
-
-                <Route path="/ob" element={<Placeholder title="Operational Benchmarking (coming soon)" />} />
-                <Route path="*" element={<Navigate to="/mra/geo" replace />} />
-            </Routes>
-        </Frame>
+                </Routes>
+            </Frame>
+            <AICopilotWidget />
+        </>
     );
 }
