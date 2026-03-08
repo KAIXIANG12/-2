@@ -16,19 +16,21 @@ export default function AICopilotWidget() {
 
     return (
         <>
-            <Fab
-                color="primary"
-                aria-label="open ai copilot"
-                onClick={() => setOpen(true)}
-                sx={{
-                    position: "fixed",
-                    right: 24,
-                    bottom: 24,
-                    zIndex: (theme) => theme.zIndex.drawer + 2,
-                }}
-            >
-                <AutoAwesomeIcon />
-            </Fab>
+            {!open && (
+                <Fab
+                    color="primary"
+                    aria-label="open ai copilot"
+                    onClick={() => setOpen(true)}
+                    sx={{
+                        position: "fixed",
+                        right: 24,
+                        bottom: 24,
+                        zIndex: (theme) => theme.zIndex.drawer + 2,
+                    }}
+                >
+                    <AutoAwesomeIcon />
+                </Fab>
+            )}
 
             <Drawer
                 anchor="right"
