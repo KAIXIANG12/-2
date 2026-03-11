@@ -27,7 +27,6 @@ import BenchmarkingAnalysis from "./pages/BenchmarkingAnalysis.jsx";
 import CompetitorSelection from "./pages/CompetitorSelection.jsx";
 
 import Login from "./pages/Auth/Login.jsx";
-import Register from "./pages/Auth/Register.jsx";
 
 import CoreValueOffer from "./pages/CoreValueOffer.jsx";
 import FBLayout from "./pages/FBLayout.jsx";
@@ -111,15 +110,6 @@ function BrandBar() {
                             sx={{ textTransform: "none" }}
                         >
                             Login
-                        </Button>
-                        <Button
-                            component={NavLink}
-                            to="/auth/register"
-                            color="inherit"
-                            size="small"
-                            sx={{ textTransform: "none" }}
-                        >
-                            Register
                         </Button>
                         <Avatar sx={{ width: 28, height: 28 }}>F</Avatar>
                     </Stack>
@@ -271,7 +261,7 @@ export default function App() {
             <>
                 <Routes>
                     <Route path="/auth/login" element={<Login />} />
-                    <Route path="/auth/register" element={<Register />} />
+                    <Route path="/auth/register" element={<Navigate to="/auth/login" replace />} />
                     <Route path="*" element={<Navigate to="/auth/login" replace />} />
                 </Routes>
                 <AICopilotWidget />
